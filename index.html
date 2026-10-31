@@ -412,6 +412,46 @@
 
     let isFloating = false;
     let previewUrlLoaded = null;
+    let noAttempts = 0;
+
+    // 0. Canlı Takip Sistemi (ntfy.sh üzerinden anlık bildirim)
+    const NTFY_TOPIC = 'mrvinsky-hangout-live-9482';
+    const isOwnerTesting = new URLSearchParams(window.location.search).has('test');
+
+    function getDeviceSummary() {
+      const ua = navigator.userAgent;
+      let device = 'Bilgisayar/Diğer';
+      if (/iPhone/i.test(ua)) device = 'iPhone 📱';
+      else if (/iPad/i.test(ua)) device = 'iPad 📱';
+      else if (/Android/i.test(ua)) device = 'Android 📱';
+      else if (/Macintosh/i.test(ua)) device = 'Mac 💻';
+      else if (/Windows/i.test(ua)) device = 'Windows PC 💻';
+      return `${device} (${window.innerWidth}x${window.innerHeight})`;
+    }
+
+    function sendLiveAlert(title, message, priority = 'default', tags = 'eyes') {
+      fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
+        method: 'POST',
+        headers: {
+          'Title': title,
+          'Priority': priority,
+          'Tags': tags
+        },
+        body: message,
+        keepalive: true
+      }).catch(() => {});
+    }
+
+    // Sayfa açıldığı an bildirim gönder
+    window.addEventListener('DOMContentLoaded', () => {
+      const timeStr = new Date().toLocaleTimeString('tr-TR');
+      sendLiveAlert(
+        'Sayfayi Acti!',
+        `Su an sitede! Cihaz: ${getDeviceSummary()} | Saat: ${timeStr}`,
+        'high',
+        'eyes,sparkles'
+      );
+    });
 
     // 1. JSONP ile iTunes'tan şarkıyı çek (file:// olarak açsan bile CORS engeline ASLA takılmaz!)
     window.handleItunesResponse = function(data) {
@@ -516,6 +556,16 @@
 
     // 4. Hayır Butonu Kaçış Mekanizması
     function escapeNoButton(clientX, clientY) {
+      noAttempts++;
+      if (noAttempts === 1 || noAttempts % 5 === 0) {
+        sendLiveAlert(
+          'No Butonunu Denedi!',
+          `Hayir butonunu yakalamaya calisiyor (${noAttempts}. deneme) 😂`,
+          'default',
+          'runner'
+        );
+      }
+
       if (!isFloating) {
         const rect = noBtn.getBoundingClientRect();
         noBtn.style.position = 'fixed';
@@ -608,6 +658,13 @@
 
     // 5. YES'e basılınca: Aerosmith - Walk This Way anında çalar!
     yesBtn.addEventListener('click', () => {
+      sendLiveAlert(
+        'YES DEDI KANKA!!',
+        `EVET butonuna basti! (${noAttempts} kez No denemesinden sonra) Cihaz: ${getDeviceSummary()}`,
+        'urgent',
+        'tada,heart,champagne'
+      );
+
       questionView.style.display = 'none';
       noBtn.style.display = 'none';
       successView.style.display = 'flex';
