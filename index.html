@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Quick Question ✨</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    body {
+      min-height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0b0714;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      position: relative;
+    }
+
+    /* Arka Plan Işıltılı Aurora Küreleri */
+    .ambient-lights {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(85px);
+      opacity: 0.65;
+      animation: floatOrb 12s ease-in-out infinite alternate;
+    }
+
+    .orb-1 {
+      width: 360px;
+      height: 360px;
+      background: radial-gradient(circle, #ff2a85, #7928ca);
+      top: -80px;
+      left: -80px;
+    }
+
+    .orb-2 {
+      width: 320px;
+      height: 320px;
+      background: radial-gradient(circle, #ffb703, #fb5607);
+      bottom: -90px;
+      right: -60px;
+      animation-delay: -5s;
+    }
+
+    .orb-3 {
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle, #00f5d4, #7b2cbf);
+      top: 40%;
+      left: 55%;
+      opacity: 0.4;
+      animation-delay: -8s;
+    }
+
+    @keyframes floatOrb {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(40px, -35px) scale(1.15); }
+    }
+
+    /* Parlayan Yıldız/Işık Tanecikleri */
+    .sparkles {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .sparkle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.8), 0 0 20px 4px rgba(255, 42, 133, 0.6);
+      animation: twinkle 3s ease-in-out infinite;
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.15; transform: scale(0.7); }
+      50% { opacity: 1; transform: scale(1.4); }
+    }
+
+    /* Ana Işıklı Cam Kart */
+    .container {
+      max-width: 460px;
+      width: 100%;
+      text-align: center;
+      padding: 46px 34px;
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 30px;
+      box-shadow:
+        0 20px 50px rgba(0, 0, 0, 0.5),
+        0 0 40px rgba(255, 42, 133, 0.22),
+        inset 0 0 20px rgba(255, 255, 255, 0.05);
+      position: relative;
+      z-index: 10;
+      transition: box-shadow 0.5s ease, border-color 0.5s ease;
+    }
+
+    .container.party-mode {
+      border-color: rgba(255, 183, 3, 0.5);
+      box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.6),
+        0 0 65px rgba(255, 42, 133, 0.45),
+        0 0 110px rgba(255, 183, 3, 0.25);
+    }
+
+    .icons {
+      font-size: 40px;
+      margin-bottom: 22px;
+      letter-spacing: 8px;
+      filter: drop-shadow(0 0 14px rgba(255, 183, 3, 0.6));
+      animation: iconGlow 2.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes iconGlow {
+      0% { transform: translateY(0); filter: drop-shadow(0 0 10px rgba(255, 42, 133, 0.6)); }
+      100% { transform: translateY(-5px); filter: drop-shadow(0 0 20px rgba(255, 183, 3, 0.9)); }
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      line-height: 1.45;
+      color: #ffffff;
+      margin-bottom: 36px;
+      letter-spacing: -0.01em;
+      text-shadow: 0 2px 15px rgba(255, 255, 255, 0.2);
+    }
+
+    .highlight-butter {
+      background: linear-gradient(90deg, #ffd166, #ffb703);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 12px rgba(255, 183, 3, 0.35));
+    }
+
+    .highlight-love {
+      background: linear-gradient(90deg, #ff4d94, #ff85b3);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 12px rgba(255, 77, 148, 0.4));
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      min-height: 56px;
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 17px;
+      font-weight: 600;
+      padding: 14px 38px;
+      border-radius: 999px;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+    }
+
+    .btn-yes {
+      background: linear-gradient(135deg, #ff2a85, #ff7b00);
+      color: #ffffff;
+      box-shadow: 0 0 25px rgba(255, 42, 133, 0.65), 0 6px 20px rgba(0, 0, 0, 0.3);
+      z-index: 20;
+    }
+
+    .btn-yes:hover {
+      transform: scale(1.07);
+      box-shadow: 0 0 35px rgba(255, 42, 133, 0.9), 0 0 60px rgba(255, 123, 0, 0.5);
+    }
+
+    .btn-yes:active {
+      transform: scale(0.97);
+    }
+
+    .btn-no {
+      background: rgba(255, 255, 255, 0.09);
+      color: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(12px);
+      z-index: 30;
+      touch-action: none;
+      transition: left 0.16s cubic-bezier(0.25, 1, 0.5, 1), top 0.16s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    /* Başarı Ekranı & Müzik Çalar */
+    .success-view {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.45s ease forwards;
+    }
+
+    .success-view h1 {
+      margin-bottom: 10px;
+      font-size: 32px;
+      background: linear-gradient(90deg, #fff, #ffd166, #ff4d94);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .success-view p.sub {
+      font-size: 17px;
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 26px;
+      line-height: 1.5;
+    }
+
+    /* Now Playing Vinyl Bar */
+    .now-playing {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      padding: 12px 18px;
+      border-radius: 20px;
+      width: 100%;
+      box-shadow: 0 0 25px rgba(255, 42, 133, 0.3);
+    }
+
+    .vinyl {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #ff2a85 18%, #111 20%, #222 45%, #111 70%);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      flex-shrink: 0;
+      animation: spin 3s linear infinite;
+      background-size: cover;
+      background-position: center;
+      position: relative;
+    }
+
+    .vinyl::after {
+      content: '';
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: #0b0714;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+
+    .track-info {
+      text-align: left;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .track-badge {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: #ff4d94;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 2px;
+    }
+
+    .equalizer {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 10px;
+    }
+
+    .equalizer span {
+      width: 2.5px;
+      background: #ff4d94;
+      border-radius: 2px;
+      animation: eq 0.55s ease-in-out infinite alternate;
+    }
+
+    .equalizer span:nth-child(2) { animation-delay: 0.18s; }
+    .equalizer span:nth-child(3) { animation-delay: 0.35s; }
+
+    @keyframes eq {
+      0% { height: 3px; }
+      100% { height: 11px; }
+    }
+
+    .track-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-artist {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.65);
+    }
+
+    .confetti-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 50;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Işıklı Arka Plan Küreleri -->
+  <div class="ambient-lights">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- Parlayan Işık Tanecikleri -->
+  <div class="sparkles" id="sparkles"></div>
+
+  <!-- Konfeti Canvas -->
+  <canvas class="confetti-canvas" id="confettiCanvas"></canvas>
+
+  <!-- Ana Kart -->
+  <div class="container" id="mainCard">
+    <div id="questionView">
+      <div class="icons">🍺 🏝️ ❤️</div>
+      <h1>
+        How about drinking <span class="highlight-butter">Butterbeer</span>,
+        watching <span class="highlight-love">Love Island</span>,
+        and going out with me?
+      </h1>
+
+      <div class="btn-group">
+        <button class="btn btn-yes" id="yesBtn">Yes ✨</button>
+        <button class="btn btn-no" id="noBtn" tabindex="-1">No</button>
+      </div>
+    </div>
+
+    <div class="success-view" id="successView">
+      <div class="icons">🥂 ✨ ❤️‍🔥</div>
+      <h1>It's a date!</h1>
+      <p class="sub">Butterbeer and Love Island are on me.</p>
+
+      <div class="now-playing">
+        <div class="vinyl" id="albumArt"></div>
+        <div class="track-info">
+          <div class="track-badge">
+            <div class="equalizer"><span></span><span></span><span></span></div>
+            Now Playing
+          </div>
+          <div class="track-title">Walk This Way</div>
+          <div class="track-artist">Aerosmith</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ses Elementi -->
+  <audio id="bgAudio" loop preload="auto"></audio>
+
+  <script>
+    const noBtn = document.getElementById('noBtn');
+    const yesBtn = document.getElementById('yesBtn');
+    const questionView = document.getElementById('questionView');
+    const successView = document.getElementById('successView');
+    const mainCard = document.getElementById('mainCard');
+    const bgAudio = document.getElementById('bgAudio');
+    const albumArt = document.getElementById('albumArt');
+
+    let isFloating = false;
+    let previewUrlLoaded = null;
+
+    // 1. JSONP ile iTunes'tan şarkıyı çek (file:// olarak açsan bile CORS engeline ASLA takılmaz!)
+    window.handleItunesResponse = function(data) {
+      if (!data || !data.results) return;
+      const track = data.results.find(
+        item => item.artistName &&
+                item.artistName.toLowerCase().includes('aerosmith') &&
+                item.trackName &&
+                item.trackName.toLowerCase().includes('walk this way') &&
+                item.previewUrl
+      ) || data.results.find(item => item.previewUrl);
+
+      if (track && track.previewUrl) {
+        previewUrlLoaded = track.previewUrl;
+        bgAudio.src = track.previewUrl;
+        bgAudio.load();
+        if (track.artworkUrl100) {
+          albumArt.style.backgroundImage = `url(${track.artworkUrl100})`;
+        }
+      }
+    };
+
+    function loadTrackViaJSONP() {
+      const script = document.createElement('script');
+      script.src = 'https://itunes.apple.com/search?term=Aerosmith+Walk+This+Way&entity=song&limit=10&callback=handleItunesResponse';
+      document.body.appendChild(script);
+    }
+    loadTrackViaJSONP();
+
+    // 2. Eğer internet yoksa veya ses dosyası yüklenemediyse Web Audio API ile "Walk This Way" ikonik Gitar + Davul Riff'ini çal!
+    let synthInterval = null;
+    function startWalkThisWaySynthLoop() {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      if (ctx.state === 'suspended') ctx.resume();
+
+      function playBar() {
+        const now = ctx.currentTime;
+        // Walk This Way meşhur kromatik gitar riff'i: A -> A# -> B -> E ...
+        const riff = [
+          { f: 110.00, t: 0.00, d: 0.13 }, // A2
+          { f: 116.54, t: 0.14, d: 0.13 }, // A#2
+          { f: 123.47, t: 0.28, d: 0.13 }, // B2
+          { f: 164.81, t: 0.42, d: 0.24 }, // E3
+          { f: 110.00, t: 0.70, d: 0.13 }, // A2
+          { f: 116.54, t: 0.84, d: 0.13 }, // A#2
+          { f: 123.47, t: 0.98, d: 0.13 }, // B2
+          { f: 164.81, t: 1.12, d: 0.20 }, // E3
+          { f: 146.83, t: 1.40, d: 0.18 }, // D3
+          { f: 123.47, t: 1.62, d: 0.18 }, // B2
+          { f: 82.41,  t: 1.85, d: 0.35 }  // Low E2
+        ];
+
+        riff.forEach(note => {
+          const osc = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const filter = ctx.createBiquadFilter();
+
+          osc.type = 'sawtooth';
+          osc2.type = 'square';
+          osc.frequency.setValueAtTime(note.f, now + note.t);
+          osc2.frequency.setValueAtTime(note.f * 2, now + note.t);
+
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(1400, now + note.t);
+
+          gain.gain.setValueAtTime(0.18, now + note.t);
+          gain.gain.exponentialRampToValueAtTime(0.005, now + note.t + note.d);
+
+          osc.connect(filter);
+          osc2.connect(filter);
+          filter.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(now + note.t);
+          osc2.start(now + note.t);
+          osc.stop(now + note.t + note.d);
+          osc2.stop(now + note.t + note.d);
+        });
+      }
+
+      playBar();
+      synthInterval = setInterval(playBar, 2250);
+    }
+
+    // 3. Arka planda parlayan yıldız/ışık tanecikleri oluştur
+    function createSparkles() {
+      const container = document.getElementById('sparkles');
+      for (let i = 0; i < 32; i++) {
+        const s = document.createElement('div');
+        s.className = 'sparkle';
+        s.style.left = Math.random() * 100 + 'vw';
+        s.style.top = Math.random() * 100 + 'vh';
+        s.style.animationDelay = (Math.random() * 3) + 's';
+        s.style.animationDuration = (2 + Math.random() * 2.5) + 's';
+        container.appendChild(s);
+      }
+    }
+    createSparkles();
+
+    // 4. Hayır Butonu Kaçış Mekanizması
+    function escapeNoButton(clientX, clientY) {
+      if (!isFloating) {
+        const rect = noBtn.getBoundingClientRect();
+        noBtn.style.position = 'fixed';
+        noBtn.style.left = rect.left + 'px';
+        noBtn.style.top = rect.top + 'px';
+        noBtn.style.margin = '0';
+        document.body.appendChild(noBtn);
+        isFloating = true;
+      }
+
+      const btnRect = noBtn.getBoundingClientRect();
+      const yesRect = yesBtn.getBoundingClientRect();
+      const padding = 24;
+
+      const maxX = window.innerWidth - btnRect.width - padding;
+      const maxY = window.innerHeight - btnRect.height - padding;
+
+      let newX, newY;
+      let tries = 0;
+
+      do {
+        newX = Math.max(padding, Math.random() * maxX);
+        newY = Math.max(padding, Math.random() * maxY);
+        tries++;
+
+        const distToCursor = clientX !== undefined
+          ? Math.hypot((newX + btnRect.width / 2) - clientX, (newY + btnRect.height / 2) - clientY)
+          : 999;
+
+        const overlapsYes = !(
+          newX + btnRect.width + 24 < yesRect.left ||
+          newX - 24 > yesRect.right ||
+          newY + btnRect.height + 24 < yesRect.top ||
+          newY - 24 > yesRect.bottom
+        );
+
+        if (distToCursor > 150 && !overlapsYes) break;
+      } while (tries < 35);
+
+      noBtn.style.left = `${newX}px`;
+      noBtn.style.top = `${newY}px`;
+    }
+
+    document.addEventListener('mousemove', (e) => {
+      if (successView.style.display === 'flex') return;
+      const rect = noBtn.getBoundingClientRect();
+      const btnCenterX = rect.left + rect.width / 2;
+      const btnCenterY = rect.top + rect.height / 2;
+      const distance = Math.hypot(e.clientX - btnCenterX, e.clientY - btnCenterY);
+
+      if (distance < 105) {
+        escapeNoButton(e.clientX, e.clientY);
+      }
+    });
+
+    noBtn.addEventListener('pointerenter', (e) => {
+      escapeNoButton(e.clientX, e.clientY);
+    });
+
+    noBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const touch = e.touches[0];
+      escapeNoButton(touch.clientX, touch.clientY);
+    }, { passive: false });
+
+    document.addEventListener('touchmove', (e) => {
+      if (successView.style.display === 'flex') return;
+      const touch = e.touches[0];
+      const rect = noBtn.getBoundingClientRect();
+      const btnCenterX = rect.left + rect.width / 2;
+      const btnCenterY = rect.top + rect.height / 2;
+      const distance = Math.hypot(touch.clientX - btnCenterX, touch.clientY - btnCenterY);
+
+      if (distance < 95) {
+        escapeNoButton(touch.clientX, touch.clientY);
+      }
+    }, { passive: true });
+
+    noBtn.addEventListener('focus', () => {
+      noBtn.blur();
+      escapeNoButton();
+    });
+
+    noBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      escapeNoButton(e.clientX, e.clientY);
+    });
+
+    // 5. YES'e basılınca: Aerosmith - Walk This Way anında çalar!
+    yesBtn.addEventListener('click', () => {
+      questionView.style.display = 'none';
+      noBtn.style.display = 'none';
+      successView.style.display = 'flex';
+      mainCard.classList.add('party-mode');
+
+      if (previewUrlLoaded) {
+        bgAudio.volume = 0.9;
+        bgAudio.play().catch(() => {
+          startWalkThisWaySynthLoop();
+        });
+      } else {
+        // Henüz yüklenmediyse tekrar dene, yoksa elektro gitar riff loop başlat
+        startWalkThisWaySynthLoop();
+      }
+
+      launchGlowConfetti();
+    });
+
+    // Işıltılı Konfeti Efekti
+    function launchGlowConfetti() {
+      const canvas = document.getElementById('confettiCanvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const pieces = [];
+      const colors = ['#ff2a85', '#ffd166', '#00f5d4', '#ff7b00', '#ffffff'];
+
+      for (let i = 0; i < 110; i++) {
+        pieces.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height - canvas.height,
+          r: 3 + Math.random() * 4,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          vy: 2 + Math.random() * 4,
+          vx: (Math.random() - 0.5) * 2.5
+        });
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        pieces.forEach((p) => {
+          p.y += p.vy;
+          p.x += p.vx;
+
+          if (p.y > canvas.height) {
+            p.y = -10;
+            p.x = Math.random() * canvas.width;
+          }
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = p.color;
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = p.color;
+          ctx.fill();
+          ctx.restore();
+        });
+        requestAnimationFrame(draw);
+      }
+      draw();
+    }
+
+    window.addEventListener('resize', () => {
+      if (isFloating && noBtn.style.display !== 'none') {
+        escapeNoButton();
+      }
+    });
+  </script>
+</body>
+</html>
