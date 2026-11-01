@@ -270,6 +270,39 @@
       transform: scale(1.08);
     }
 
+    .spell-btn.leviosa {
+      border-color: rgba(247, 37, 133, 0.4);
+    }
+    .spell-btn.leviosa.active, .spell-btn.leviosa:active {
+      background: radial-gradient(circle, #f72585, #7209b7);
+      border-color: #f72585;
+      box-shadow: 0 0 25px #f72585;
+      transform: scale(1.08);
+    }
+
+    /* Kedi Rozeti */
+    .cat-badge {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #ffd166;
+      background: rgba(247, 37, 133, 0.25);
+      border: 1px solid rgba(255, 209, 102, 0.5);
+      padding: 6px 16px;
+      border-radius: 20px;
+      margin-bottom: 6px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 0 15px rgba(247, 37, 133, 0.5);
+      animation: catGlow 1.5s infinite alternate;
+    }
+
+    @keyframes catGlow {
+      from { box-shadow: 0 0 10px rgba(247, 37, 133, 0.4); }
+      to { box-shadow: 0 0 25px rgba(255, 209, 102, 0.8); }
+    }
+
     /* Ekran Flaş Efektleri (Büyü Atıldığında) */
     #flashOverlay {
       position: fixed;
@@ -396,6 +429,10 @@
     </div>
 
     <div class="bottom-bar">
+      <div class="cat-badge" id="catBadge">
+        <span>🐾 Lord Boban (Leviosa Cat): <span id="catTimer">10.0</span>s ✨</span>
+      </div>
+
       <div class="selected-spell-label" id="spellLabel">STUPEFY ⚡</div>
 
       <div class="spell-dock">
@@ -423,6 +460,11 @@
         <button class="spell-btn avada" data-spell="avada">
           <span class="icon">💚</span>
           <span class="name">Avada</span>
+        </button>
+
+        <button class="spell-btn leviosa" data-spell="leviosa">
+          <span class="icon">🪄</span>
+          <span class="name">Leviosa</span>
         </button>
       </div>
     </div>
@@ -514,6 +556,20 @@
         gain.connect(audioCtx.destination);
         osc.start(now);
         osc.stop(now + 0.51);
+      } else if (type === 'leviosa') {
+        // Wingardium Leviosa: Büyülü yükselme ve kedi miyavı sentezi
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(450, now);
+        osc.frequency.exponentialRampToValueAtTime(900, now + 0.3);
+        osc.frequency.exponentialRampToValueAtTime(650, now + 0.6);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.61);
       }
     }
 
@@ -645,6 +701,14 @@
         damage: 250,
         speed: 40,
         flash: 'rgba(57, 255, 20, 0.5)'
+      },
+      leviosa: {
+        name: 'Wingardium Leviosa 🪶',
+        color: '#f72585',
+        lightColor: 'rgba(247, 37, 133, 0.5)',
+        damage: 15,
+        speed: 25,
+        flash: 'rgba(247, 37, 133, 0.45)'
       }
     };
 
@@ -955,6 +1019,242 @@
       }
     }
 
+    // --- IŞIKLI AYDINLATMA İZLERİ & RUH KEDİSİ (LORD BOBAN - LEVIOSA) ---
+    const lightTrails = [];
+    let activeCat = null;
+    const catBadge = document.getElementById('catBadge');
+    const catTimer = document.getElementById('catTimer');
+
+    class LightFootprint {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.radius = 20;
+        this.maxRadius = 140;
+        this.alpha = 0.9;
+        this.decay = 0.007; // Yaklaşık 4-5 saniye odada kalır
+      }
+
+      update() {
+        if (this.radius < this.maxRadius) this.radius += 1.8;
+        this.alpha -= this.decay;
+
+        // Aydınlatılan bölgedeki hayaletlere ışık hasarı ver
+        ghosts.forEach(ghost => {
+          const pos = ghost.getScreenPosition();
+          if (!pos || ghost.isDying) return;
+          const d = Math.hypot(this.x - pos.x, this.y - pos.y);
+          if (d < this.radius) {
+            ghost.health -= 0.35;
+            if (ghost.health <= 0) {
+              ghost.isDying = true;
+              playGhostDeathSound();
+              score += 150;
+              scoreText.textContent = score;
+            }
+          }
+        });
+      }
+
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.alpha);
+        const grad = ctx.createRadialGradient(this.x, this.y, 5, this.x, this.y, this.radius);
+        grad.addColorStop(0, 'rgba(255, 240, 180, 0.7)');
+        grad.addColorStop(0.4, 'rgba(255, 209, 102, 0.35)');
+        grad.addColorStop(1, 'rgba(255, 209, 102, 0)');
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pati İzi (Cat Paw Print)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = '#ffd166';
+        ctx.beginPath();
+        ctx.ellipse(this.x, this.y + 4, 7, 5.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pati parmakları
+        ctx.beginPath();
+        ctx.arc(this.x - 6, this.y - 3, 2.8, 0, Math.PI * 2);
+        ctx.arc(this.x - 2, this.y - 6, 2.8, 0, Math.PI * 2);
+        ctx.arc(this.x + 3, this.y - 6, 2.8, 0, Math.PI * 2);
+        ctx.arc(this.x + 7, this.y - 3, 2.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+    }
+
+    class SpiritCat {
+      constructor() {
+        this.duration = 10000; // 10 Saniye
+        this.startTime = Date.now();
+        this.theta = camYaw + (Math.random() - 0.5) * 0.8;
+        this.phi = camPitch + 0.1;
+        this.distance = 320;
+        this.walkCycle = 0;
+        this.trailTimer = 0;
+        this.isAlive = true;
+        catBadge.style.display = 'flex';
+      }
+
+      update() {
+        const elapsed = Date.now() - this.startTime;
+        const remaining = Math.max(0, (this.duration - elapsed) / 1000);
+        catTimer.textContent = remaining.toFixed(1);
+
+        if (remaining <= 0) {
+          this.isAlive = false;
+          catBadge.style.display = 'none';
+          return;
+        }
+
+        // Salonda neşeyle gezinme / süzülme rotası
+        this.walkCycle += 0.08;
+        this.theta += Math.sin(this.walkCycle * 0.4) * 0.012 + 0.008;
+        this.phi += Math.cos(this.walkCycle * 0.3) * 0.006;
+
+        // Gezindikçe arkasında aydınlatan ışık izleri bırak
+        this.trailTimer++;
+        if (this.trailTimer % 8 === 0) {
+          const pos = this.getScreenPosition();
+          if (pos) {
+            lightTrails.push(new LightFootprint(pos.x, pos.y + 30 * pos.scale));
+            // Işıltılı yıldız tozları
+            for (let i = 0; i < 4; i++) {
+              particles.push(new Particle(pos.x, pos.y + 20 * pos.scale, '#ffd166'));
+            }
+          }
+        }
+      }
+
+      getScreenPosition() {
+        let relTheta = this.theta - camYaw;
+        while (relTheta > Math.PI) relTheta -= Math.PI * 2;
+        while (relTheta < -Math.PI) relTheta += Math.PI * 2;
+        let relPhi = this.phi - camPitch;
+
+        const fov = 1.3;
+        if (Math.abs(relTheta) > fov) return null;
+
+        const screenX = width / 2 + (relTheta / fov) * (width * 0.9);
+        const screenY = height / 2 + (relPhi / fov) * (height * 0.9) + Math.sin(this.walkCycle) * 12;
+        const scale = Math.max(0.6, 550 / this.distance);
+
+        return { x: screenX, y: screenY, scale: scale };
+      }
+
+      draw() {
+        const pos = this.getScreenPosition();
+        if (!pos) return;
+
+        ctx.save();
+        ctx.translate(pos.x, pos.y);
+        ctx.scale(pos.scale, pos.scale);
+
+        // Kedi Ruh Aurası (Aydınlatma Alanı)
+        const auraGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, 110);
+        auraGrad.addColorStop(0, 'rgba(255, 235, 150, 0.55)');
+        auraGrad.addColorStop(0.6, 'rgba(247, 37, 133, 0.25)');
+        auraGrad.addColorStop(1, 'rgba(255, 209, 102, 0)');
+        ctx.fillStyle = auraGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, 110, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Kedinin Gövdesi (Sihirli Işıltılı Beyaz/Altın)
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = '#ffd166';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+
+        // Gövde
+        ctx.beginPath();
+        ctx.ellipse(0, 5, 32, 22, 0.1, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Baş
+        ctx.beginPath();
+        ctx.arc(-24, -14, 18, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Kulaklar
+        ctx.fillStyle = '#ff758f';
+        ctx.beginPath();
+        ctx.moveTo(-36, -26);
+        ctx.lineTo(-28, -42);
+        ctx.lineTo(-20, -28);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(-20, -28);
+        ctx.lineTo(-12, -42);
+        ctx.lineTo(-6, -24);
+        ctx.closePath();
+        ctx.fill();
+
+        // Parlayan Zümrüt Gözler
+        ctx.fillStyle = '#00f5d4';
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#00f5d4';
+        ctx.beginPath();
+        ctx.arc(-30, -15, 3.5, 0, Math.PI * 2);
+        ctx.arc(-20, -15, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Burncuk ve Bıyıklar
+        ctx.fillStyle = '#ff4d6d';
+        ctx.beginPath();
+        ctx.arc(-25, -9, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-27, -9); ctx.lineTo(-42, -12);
+        ctx.moveTo(-27, -8); ctx.lineTo(-42, -7);
+        ctx.moveTo(-23, -9); ctx.lineTo(-8, -12);
+        ctx.moveTo(-23, -8); ctx.lineTo(-8, -7);
+        ctx.stroke();
+
+        // Sallanan Kuyruk (Waving Tail)
+        const tailWag = Math.sin(this.walkCycle * 2) * 16;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(28, 5);
+        ctx.quadraticCurveTo(46, -10 + tailWag, 52, -26 + tailWag);
+        ctx.stroke();
+
+        // Bacaklar (Adım atma animasyonu)
+        const legSwing = Math.sin(this.walkCycle * 2) * 8;
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.beginPath();
+        ctx.moveTo(-16, 22); ctx.lineTo(-16 + legSwing, 34);
+        ctx.moveTo(-8, 22); ctx.lineTo(-8 - legSwing, 34);
+        ctx.moveTo(12, 22); ctx.lineTo(12 - legSwing, 34);
+        ctx.moveTo(20, 22); ctx.lineTo(20 + legSwing, 34);
+        ctx.stroke();
+
+        // Başın üstünde parlayan Lord Halesi (Lord Boban 👑)
+        ctx.strokeStyle = '#ffd166';
+        ctx.lineWidth = 2.5;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#ffd166';
+        ctx.beginPath();
+        ctx.ellipse(-24, -46, 15, 6, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+    }
+
     // --- BÜYÜ YAPMA (Ekrana Dokununca Ateşle) ---
     function castSpell(targetX, targetY) {
       initAudio();
@@ -969,6 +1269,11 @@
       if (navigator.vibrate) navigator.vibrate(35);
 
       spellBeams.push(new SpellBeam(targetX, targetY, selectedSpell));
+
+      // Eğer Wingardium Leviosa yapıldıysa: Kedi Boban'ı çağır!
+      if (selectedSpell === 'leviosa') {
+        activeCat = new SpiritCat();
+      }
     }
 
     // Ekranın ortasına veya dokunulan noktaya büyü at
@@ -994,7 +1299,25 @@
     function gameLoop() {
       ctx.clearRect(0, 0, width, height);
 
-      // Hayaletleri Güncelle ve Çiz
+      // 1. Kedinin Bıraktığı Işık İzlerini Çiz ve Güncelle
+      for (let i = lightTrails.length - 1; i >= 0; i--) {
+        const trail = lightTrails[i];
+        trail.update();
+        trail.draw();
+        if (trail.alpha <= 0) lightTrails.splice(i, 1);
+      }
+
+      // 2. Ruh Kedisi (Lord Boban - Leviosa)
+      if (activeCat) {
+        activeCat.update();
+        if (activeCat.isAlive) {
+          activeCat.draw();
+        } else {
+          activeCat = null;
+        }
+      }
+
+      // 3. Hayaletleri Güncelle ve Çiz
       ghosts.forEach(ghost => {
         ghost.update();
         ghost.draw();
