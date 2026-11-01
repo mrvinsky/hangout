@@ -7,6 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- Three.js 3D Kütüphanesi -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -406,6 +408,9 @@
 
   <!-- Çizim Canvas'ı (Hayaletler + Işınlar) -->
   <canvas id="gameCanvas"></canvas>
+
+  <!-- 3D Three.js Sahnesi (Gerçek 3D Ruh Kedisi) -->
+  <canvas id="threeCanvas" style="position: fixed; inset: 0; pointer-events: none; z-index: 7;"></canvas>
 
   <!-- Büyü Flaş Katmanı -->
   <div id="flashOverlay"></div>
@@ -1019,87 +1024,130 @@
       }
     }
 
-    // --- IŞIKLI AYDINLATMA İZLERİ & RUH KEDİSİ (LORD BOBAN - LEVIOSA) ---
+    // --- THREE.JS 3D SAHNE & 3D RUH KEDİSİ KURULUMU ---
+    const threeCanvas = document.getElementById('threeCanvas');
+    const renderer3D = new THREE.WebGLRenderer({ canvas: threeCanvas, alpha: true, antialias: true });
+    renderer3D.setSize(window.innerWidth, window.innerHeight);
+    renderer3D.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const scene3D = new THREE.Scene();
+    const camera3D = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera3D.position.set(0, 0, 0);
+
+    // 3D Işıklar
+    const ambLight = new THREE.AmbientLight(0xffffff, 0.75);
+    scene3D.add(ambLight);
+
+    const catLight = new THREE.PointLight(0xffd166, 3.5, 40);
+    catLight.position.set(0, 0, 0);
+    scene3D.add(catLight);
+
+    // Gerçek 3D Kedi Modeli Oluşturucu (Three.js)
+    function create3DCat() {
+      const catGroup = new THREE.Group();
+
+      const furMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.25,
+        metalness: 0.15,
+        emissive: 0xffe082,
+        emissiveIntensity: 0.45
+      });
+
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x00f5d4 });
+      const goldMat = new THREE.MeshBasicMaterial({ color: 0xffd166 });
+
+      // 1. Gövde
+      const bodyGeo = new THREE.CylinderGeometry(0.55, 0.65, 2.0, 16);
+      bodyGeo.rotateZ(Math.PI / 2);
+      const bodyMesh = new THREE.Mesh(bodyGeo, furMat);
+      catGroup.add(bodyMesh);
+
+      // 2. Kafa
+      const headGeo = new THREE.SphereGeometry(0.62, 16, 16);
+      const headMesh = new THREE.Mesh(headGeo, furMat);
+      headMesh.position.set(1.15, 0.45, 0);
+      catGroup.add(headMesh);
+
+      // 3. Kulaklar
+      const earGeo = new THREE.ConeGeometry(0.24, 0.52, 4);
+      const leftEar = new THREE.Mesh(earGeo, furMat);
+      leftEar.position.set(1.1, 1.05, 0.32);
+      leftEar.rotation.z = -0.25;
+      catGroup.add(leftEar);
+
+      const rightEar = new THREE.Mesh(earGeo, furMat);
+      rightEar.position.set(1.1, 1.05, -0.32);
+      rightEar.rotation.z = -0.25;
+      catGroup.add(rightEar);
+
+      // 4. Parlayan 3D Gözler
+      const eyeGeo = new THREE.SphereGeometry(0.1, 8, 8);
+      const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+      leftEye.position.set(1.68, 0.58, 0.24);
+      catGroup.add(leftEye);
+
+      const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+      rightEye.position.set(1.68, 0.58, -0.24);
+      catGroup.add(rightEye);
+
+      // 5. Kuyruk
+      const tailGroup = new THREE.Group();
+      tailGroup.position.set(-1.0, 0.3, 0);
+      const tailGeo = new THREE.CylinderGeometry(0.1, 0.16, 1.4, 8);
+      tailGeo.rotateZ(-Math.PI / 3.5);
+      const tailMesh = new THREE.Mesh(tailGeo, furMat);
+      tailGroup.add(tailMesh);
+      catGroup.add(tailGroup);
+
+      // 6. 4 Hareketli 3D Bacak
+      const legGeo = new THREE.CylinderGeometry(0.14, 0.12, 0.85, 8);
+      const flLeg = new THREE.Mesh(legGeo, furMat); flLeg.position.set(0.7, -0.8, 0.38); catGroup.add(flLeg);
+      const frLeg = new THREE.Mesh(legGeo, furMat); frLeg.position.set(0.7, -0.8, -0.38); catGroup.add(frLeg);
+      const blLeg = new THREE.Mesh(legGeo, furMat); blLeg.position.set(-0.7, -0.8, 0.38); catGroup.add(blLeg);
+      const brLeg = new THREE.Mesh(legGeo, furMat); brLeg.position.set(-0.7, -0.8, -0.38); catGroup.add(brLeg);
+
+      // 7. Lord Halesi (3D Golden Halo)
+      const haloGeo = new THREE.TorusGeometry(0.42, 0.05, 8, 24);
+      haloGeo.rotateX(Math.PI / 2);
+      const haloMesh = new THREE.Mesh(haloGeo, goldMat);
+      haloMesh.position.set(1.15, 1.45, 0);
+      catGroup.add(haloMesh);
+
+      scene3D.add(catGroup);
+
+      return {
+        root: catGroup,
+        tail: tailGroup,
+        legs: [flLeg, frLeg, blLeg, brLeg]
+      };
+    }
+
+    // --- 3D RUH KEDİSİ (LORD BOBAN - 10 Saniyelik Kutsal Koruma) ---
     const lightTrails = [];
     let activeCat = null;
+    let cat3DModel = null;
     const catBadge = document.getElementById('catBadge');
     const catTimer = document.getElementById('catTimer');
 
-    class LightFootprint {
-      constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.radius = 20;
-        this.maxRadius = 140;
-        this.alpha = 0.9;
-        this.decay = 0.007; // Yaklaşık 4-5 saniye odada kalır
-      }
-
-      update() {
-        if (this.radius < this.maxRadius) this.radius += 1.8;
-        this.alpha -= this.decay;
-
-        // Aydınlatılan bölgedeki hayaletlere ışık hasarı ver
-        ghosts.forEach(ghost => {
-          const pos = ghost.getScreenPosition();
-          if (!pos || ghost.isDying) return;
-          const d = Math.hypot(this.x - pos.x, this.y - pos.y);
-          if (d < this.radius) {
-            ghost.health -= 0.35;
-            if (ghost.health <= 0) {
-              ghost.isDying = true;
-              playGhostDeathSound();
-              score += 150;
-              scoreText.textContent = score;
-            }
-          }
-        });
-      }
-
-      draw() {
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, this.alpha);
-        const grad = ctx.createRadialGradient(this.x, this.y, 5, this.x, this.y, this.radius);
-        grad.addColorStop(0, 'rgba(255, 240, 180, 0.7)');
-        grad.addColorStop(0.4, 'rgba(255, 209, 102, 0.35)');
-        grad.addColorStop(1, 'rgba(255, 209, 102, 0)');
-
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Pati İzi (Cat Paw Print)
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = '#ffd166';
-        ctx.beginPath();
-        ctx.ellipse(this.x, this.y + 4, 7, 5.5, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Pati parmakları
-        ctx.beginPath();
-        ctx.arc(this.x - 6, this.y - 3, 2.8, 0, Math.PI * 2);
-        ctx.arc(this.x - 2, this.y - 6, 2.8, 0, Math.PI * 2);
-        ctx.arc(this.x + 3, this.y - 6, 2.8, 0, Math.PI * 2);
-        ctx.arc(this.x + 7, this.y - 3, 2.8, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
-      }
-    }
-
-    class SpiritCat {
+    class SpiritCat3D {
       constructor() {
-        this.duration = 10000; // 10 Saniye
+        this.duration = 10000; // Tam 10 Saniye
         this.startTime = Date.now();
-        this.theta = camYaw + (Math.random() - 0.5) * 0.8;
-        this.phi = camPitch + 0.1;
-        this.distance = 320;
-        this.walkCycle = 0;
-        this.trailTimer = 0;
         this.isAlive = true;
+        this.walkTime = 0;
+        this.radius = 4.8; // Salonda 3D mesafesi
+        this.angle = camYaw + Math.PI; // Oyuncunun önünde belirir
+
+        if (!cat3DModel) {
+          cat3DModel = create3DCat();
+        }
+        cat3DModel.root.visible = true;
+        catLight.intensity = 3.5;
+
         catBadge.style.display = 'flex';
+        ghostCountText.innerHTML = "🛡️ SANCTUARY: All Specters Fled!";
+        ghostCountText.style.color = "#ffd166";
       }
 
       update() {
@@ -1109,149 +1157,60 @@
 
         if (remaining <= 0) {
           this.isAlive = false;
+          cat3DModel.root.visible = false;
+          catLight.intensity = 0;
           catBadge.style.display = 'none';
+          ghostCountText.textContent = "Active Specters: 3";
+          ghostCountText.style.color = "#ff758f";
           return;
         }
 
-        // Salonda neşeyle gezinme / süzülme rotası
-        this.walkCycle += 0.08;
-        this.theta += Math.sin(this.walkCycle * 0.4) * 0.012 + 0.008;
-        this.phi += Math.cos(this.walkCycle * 0.3) * 0.006;
+        // Salonda 3D yörüngede gezinme
+        this.walkTime += 0.05;
+        this.angle += 0.018;
 
-        // Gezindikçe arkasında aydınlatan ışık izleri bırak
-        this.trailTimer++;
-        if (this.trailTimer % 8 === 0) {
-          const pos = this.getScreenPosition();
-          if (pos) {
-            lightTrails.push(new LightFootprint(pos.x, pos.y + 30 * pos.scale));
-            // Işıltılı yıldız tozları
-            for (let i = 0; i < 4; i++) {
-              particles.push(new Particle(pos.x, pos.y + 20 * pos.scale, '#ffd166'));
+        const posX = Math.sin(this.angle) * this.radius;
+        const posZ = -Math.cos(this.angle) * this.radius;
+        const posY = -1.2 + Math.sin(this.walkTime * 2) * 0.25;
+
+        cat3DModel.root.position.set(posX, posY, posZ);
+
+        // Bir sonraki noktaya dönerek yürü (3D lookAt)
+        const nextX = Math.sin(this.angle + 0.1) * this.radius;
+        const nextZ = -Math.cos(this.angle + 0.1) * this.radius;
+        cat3DModel.root.lookAt(nextX, posY, nextZ);
+
+        // Işığı kediyle birlikte taşı
+        catLight.position.set(posX, posY + 1.2, posZ);
+
+        // Bacak yürüme ve kuyruk sallanma animasyonu
+        const legSwing = Math.sin(this.walkTime * 3) * 0.45;
+        cat3DModel.legs[0].rotation.z = legSwing;
+        cat3DModel.legs[1].rotation.z = -legSwing;
+        cat3DModel.legs[2].rotation.z = -legSwing;
+        cat3DModel.legs[3].rotation.z = legSwing;
+        cat3DModel.tail.rotation.z = Math.sin(this.walkTime * 2) * 0.35;
+
+        // Ekrana 2D izdüşümü alarak parlayan zemin ışık izleri bırak
+        if (Math.floor(this.walkTime * 10) % 6 === 0) {
+          const screenPos = this.toScreenPosition(cat3DModel.root.position);
+          if (screenPos) {
+            lightTrails.push(new LightFootprint(screenPos.x, screenPos.y));
+            for (let i = 0; i < 3; i++) {
+              particles.push(new Particle(screenPos.x, screenPos.y, '#ffd166'));
             }
           }
         }
       }
 
-      getScreenPosition() {
-        let relTheta = this.theta - camYaw;
-        while (relTheta > Math.PI) relTheta -= Math.PI * 2;
-        while (relTheta < -Math.PI) relTheta += Math.PI * 2;
-        let relPhi = this.phi - camPitch;
-
-        const fov = 1.3;
-        if (Math.abs(relTheta) > fov) return null;
-
-        const screenX = width / 2 + (relTheta / fov) * (width * 0.9);
-        const screenY = height / 2 + (relPhi / fov) * (height * 0.9) + Math.sin(this.walkCycle) * 12;
-        const scale = Math.max(0.6, 550 / this.distance);
-
-        return { x: screenX, y: screenY, scale: scale };
-      }
-
-      draw() {
-        const pos = this.getScreenPosition();
-        if (!pos) return;
-
-        ctx.save();
-        ctx.translate(pos.x, pos.y);
-        ctx.scale(pos.scale, pos.scale);
-
-        // Kedi Ruh Aurası (Aydınlatma Alanı)
-        const auraGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, 110);
-        auraGrad.addColorStop(0, 'rgba(255, 235, 150, 0.55)');
-        auraGrad.addColorStop(0.6, 'rgba(247, 37, 133, 0.25)');
-        auraGrad.addColorStop(1, 'rgba(255, 209, 102, 0)');
-        ctx.fillStyle = auraGrad;
-        ctx.beginPath();
-        ctx.arc(0, 0, 110, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Kedinin Gövdesi (Sihirli Işıltılı Beyaz/Altın)
-        ctx.shadowBlur = 25;
-        ctx.shadowColor = '#ffd166';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-
-        // Gövde
-        ctx.beginPath();
-        ctx.ellipse(0, 5, 32, 22, 0.1, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Baş
-        ctx.beginPath();
-        ctx.arc(-24, -14, 18, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Kulaklar
-        ctx.fillStyle = '#ff758f';
-        ctx.beginPath();
-        ctx.moveTo(-36, -26);
-        ctx.lineTo(-28, -42);
-        ctx.lineTo(-20, -28);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.moveTo(-20, -28);
-        ctx.lineTo(-12, -42);
-        ctx.lineTo(-6, -24);
-        ctx.closePath();
-        ctx.fill();
-
-        // Parlayan Zümrüt Gözler
-        ctx.fillStyle = '#00f5d4';
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = '#00f5d4';
-        ctx.beginPath();
-        ctx.arc(-30, -15, 3.5, 0, Math.PI * 2);
-        ctx.arc(-20, -15, 3.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Burncuk ve Bıyıklar
-        ctx.fillStyle = '#ff4d6d';
-        ctx.beginPath();
-        ctx.arc(-25, -9, 2, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(-27, -9); ctx.lineTo(-42, -12);
-        ctx.moveTo(-27, -8); ctx.lineTo(-42, -7);
-        ctx.moveTo(-23, -9); ctx.lineTo(-8, -12);
-        ctx.moveTo(-23, -8); ctx.lineTo(-8, -7);
-        ctx.stroke();
-
-        // Sallanan Kuyruk (Waving Tail)
-        const tailWag = Math.sin(this.walkCycle * 2) * 16;
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
-        ctx.lineWidth = 6;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(28, 5);
-        ctx.quadraticCurveTo(46, -10 + tailWag, 52, -26 + tailWag);
-        ctx.stroke();
-
-        // Bacaklar (Adım atma animasyonu)
-        const legSwing = Math.sin(this.walkCycle * 2) * 8;
-        ctx.lineWidth = 5;
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.beginPath();
-        ctx.moveTo(-16, 22); ctx.lineTo(-16 + legSwing, 34);
-        ctx.moveTo(-8, 22); ctx.lineTo(-8 - legSwing, 34);
-        ctx.moveTo(12, 22); ctx.lineTo(12 - legSwing, 34);
-        ctx.moveTo(20, 22); ctx.lineTo(20 + legSwing, 34);
-        ctx.stroke();
-
-        // Başın üstünde parlayan Lord Halesi (Lord Boban 👑)
-        ctx.strokeStyle = '#ffd166';
-        ctx.lineWidth = 2.5;
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = '#ffd166';
-        ctx.beginPath();
-        ctx.ellipse(-24, -46, 15, 6, 0, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.restore();
+      toScreenPosition(pos3D) {
+        const v = pos3D.clone();
+        v.project(camera3D);
+        if (v.z > 1) return null;
+        return {
+          x: (v.x * 0.5 + 0.5) * width,
+          y: (-(v.y * 0.5) + 0.5) * height
+        };
       }
     }
 
@@ -1270,9 +1229,9 @@
 
       spellBeams.push(new SpellBeam(targetX, targetY, selectedSpell));
 
-      // Eğer Wingardium Leviosa yapıldıysa: Kedi Boban'ı çağır!
+      // Eğer Wingardium Leviosa yapıldıysa: 3D Kedi Boban'ı çağır!
       if (selectedSpell === 'leviosa') {
-        activeCat = new SpiritCat();
+        activeCat = new SpiritCat3D();
       }
     }
 
@@ -1283,6 +1242,11 @@
 
     // Nişangah Takibi (Bir hayalete kilitlendiğinde kırmızıya dönsün)
     function checkCrosshairLock() {
+      if (activeCat && activeCat.isAlive) {
+        crosshair.classList.remove('locked');
+        return;
+      }
+
       let isLocked = false;
       ghosts.forEach(ghost => {
         const pos = ghost.getScreenPosition();
@@ -1299,7 +1263,11 @@
     function gameLoop() {
       ctx.clearRect(0, 0, width, height);
 
-      // 1. Kedinin Bıraktığı Işık İzlerini Çiz ve Güncelle
+      // 3D Kamerayı AR jiroskop açılarına göre döndür
+      camera3D.rotation.y = -camYaw;
+      camera3D.rotation.x = camPitch;
+
+      // 1. Kedinin Bıraktığı Zemin Işık İzlerini Çiz ve Güncelle
       for (let i = lightTrails.length - 1; i >= 0; i--) {
         const trail = lightTrails[i];
         trail.update();
@@ -1307,21 +1275,28 @@
         if (trail.alpha <= 0) lightTrails.splice(i, 1);
       }
 
-      // 2. Ruh Kedisi (Lord Boban - Leviosa)
+      // 2. Gerçek 3D Ruh Kedisi (Lord Boban)
       if (activeCat) {
         activeCat.update();
-        if (activeCat.isAlive) {
-          activeCat.draw();
-        } else {
+        if (!activeCat.isAlive) {
           activeCat = null;
         }
       }
+      renderer3D.render(scene3D, camera3D);
 
-      // 3. Hayaletleri Güncelle ve Çiz
-      ghosts.forEach(ghost => {
-        ghost.update();
-        ghost.draw();
-      });
+      // 3. Kutsal Koruma: Kedi ekrandayken ASLA hayalet gelmez, var olanlar kaçar!
+      if (activeCat && activeCat.isAlive) {
+        ghosts.forEach(ghost => {
+          ghost.alpha = Math.max(0, ghost.alpha - 0.08);
+          if (ghost.alpha > 0) ghost.draw();
+        });
+      } else {
+        // Kedi yokken normal hayaletler oyunda aktif olur
+        ghosts.forEach(ghost => {
+          ghost.update();
+          ghost.draw();
+        });
+      }
 
       // Büyü Işınlarını Çiz
       for (let i = spellBeams.length - 1; i >= 0; i--) {
