@@ -726,6 +726,13 @@
         selectedSpell = btn.dataset.spell;
         document.getElementById('spellLabel').textContent = SPELLS[selectedSpell].name;
         if (navigator.vibrate) navigator.vibrate(20);
+
+        // Leviosa butonuna basıldığı an 3D kediyi doğrudan çağır!
+        if (selectedSpell === 'leviosa') {
+          initAudio();
+          playSpellSound('leviosa');
+          activeCat = new SpiritCat3D();
+        }
       });
     });
 
@@ -1045,13 +1052,14 @@
     // Gerçek 3D Kedi Modeli Oluşturucu (Three.js)
     function create3DCat() {
       const catGroup = new THREE.Group();
+      catGroup.scale.set(1.5, 1.5, 1.5); // İyice belirgin ve heybetli boyut
 
       const furMat = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        roughness: 0.25,
-        metalness: 0.15,
-        emissive: 0xffe082,
-        emissiveIntensity: 0.45
+        color: 0xfff6d6,
+        roughness: 0.2,
+        metalness: 0.1,
+        emissive: 0xffb703,
+        emissiveIntensity: 0.55
       });
 
       const eyeMat = new THREE.MeshBasicMaterial({ color: 0x00f5d4 });
@@ -1064,37 +1072,37 @@
       catGroup.add(bodyMesh);
 
       // 2. Kafa
-      const headGeo = new THREE.SphereGeometry(0.62, 16, 16);
+      const headGeo = new THREE.SphereGeometry(0.65, 16, 16);
       const headMesh = new THREE.Mesh(headGeo, furMat);
       headMesh.position.set(1.15, 0.45, 0);
       catGroup.add(headMesh);
 
       // 3. Kulaklar
-      const earGeo = new THREE.ConeGeometry(0.24, 0.52, 4);
+      const earGeo = new THREE.ConeGeometry(0.24, 0.55, 4);
       const leftEar = new THREE.Mesh(earGeo, furMat);
-      leftEar.position.set(1.1, 1.05, 0.32);
+      leftEar.position.set(1.1, 1.1, 0.32);
       leftEar.rotation.z = -0.25;
       catGroup.add(leftEar);
 
       const rightEar = new THREE.Mesh(earGeo, furMat);
-      rightEar.position.set(1.1, 1.05, -0.32);
+      rightEar.position.set(1.1, 1.1, -0.32);
       rightEar.rotation.z = -0.25;
       catGroup.add(rightEar);
 
       // 4. Parlayan 3D Gözler
-      const eyeGeo = new THREE.SphereGeometry(0.1, 8, 8);
+      const eyeGeo = new THREE.SphereGeometry(0.12, 8, 8);
       const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-      leftEye.position.set(1.68, 0.58, 0.24);
+      leftEye.position.set(1.7, 0.58, 0.25);
       catGroup.add(leftEye);
 
       const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-      rightEye.position.set(1.68, 0.58, -0.24);
+      rightEye.position.set(1.7, 0.58, -0.25);
       catGroup.add(rightEye);
 
       // 5. Kuyruk
       const tailGroup = new THREE.Group();
       tailGroup.position.set(-1.0, 0.3, 0);
-      const tailGeo = new THREE.CylinderGeometry(0.1, 0.16, 1.4, 8);
+      const tailGeo = new THREE.CylinderGeometry(0.1, 0.16, 1.5, 8);
       tailGeo.rotateZ(-Math.PI / 3.5);
       const tailMesh = new THREE.Mesh(tailGeo, furMat);
       tailGroup.add(tailMesh);
@@ -1108,10 +1116,10 @@
       const brLeg = new THREE.Mesh(legGeo, furMat); brLeg.position.set(-0.7, -0.8, -0.38); catGroup.add(brLeg);
 
       // 7. Lord Halesi (3D Golden Halo)
-      const haloGeo = new THREE.TorusGeometry(0.42, 0.05, 8, 24);
+      const haloGeo = new THREE.TorusGeometry(0.48, 0.06, 8, 24);
       haloGeo.rotateX(Math.PI / 2);
       const haloMesh = new THREE.Mesh(haloGeo, goldMat);
-      haloMesh.position.set(1.15, 1.45, 0);
+      haloMesh.position.set(1.15, 1.55, 0);
       catGroup.add(haloMesh);
 
       scene3D.add(catGroup);
@@ -1136,14 +1144,12 @@
         this.startTime = Date.now();
         this.isAlive = true;
         this.walkTime = 0;
-        this.radius = 4.8; // Salonda 3D mesafesi
-        this.angle = camYaw + Math.PI; // Oyuncunun önünde belirir
 
         if (!cat3DModel) {
           cat3DModel = create3DCat();
         }
         cat3DModel.root.visible = true;
-        catLight.intensity = 3.5;
+        catLight.intensity = 4.0;
 
         catBadge.style.display = 'flex';
         ghostCountText.innerHTML = "🛡️ SANCTUARY: All Specters Fled!";
@@ -1165,35 +1171,39 @@
           return;
         }
 
-        // Salonda 3D yörüngede gezinme
-        this.walkTime += 0.05;
-        this.angle += 0.018;
+        // Kedi TAM OYUNCUNUN ÖNÜNDE (Z = -3.2 metrede) sağa-sola ve derinliğe süzülerek yürür!
+        this.walkTime += 0.04;
+        const localX = Math.sin(this.walkTime * 1.5) * 1.8;
+        const localY = -0.55 + Math.sin(this.walkTime * 3) * 0.15;
+        const localZ = -3.2 + Math.cos(this.walkTime * 1.2) * 0.8;
 
-        const posX = Math.sin(this.angle) * this.radius;
-        const posZ = -Math.cos(this.angle) * this.radius;
-        const posY = -1.2 + Math.sin(this.walkTime * 2) * 0.25;
+        // Kameranın baktığı yöne göre 3D konumu hesapla (Kamera nereye dönerse kedi görüş alanında kalır)
+        const catWorldPos = new THREE.Vector3(localX, localY, localZ).applyEuler(camera3D.rotation);
+        cat3DModel.root.position.copy(catWorldPos);
 
-        cat3DModel.root.position.set(posX, posY, posZ);
+        // Yürüyüş yönüne doğru bak
+        const nextLocalPos = new THREE.Vector3(
+          Math.sin((this.walkTime + 0.1) * 1.5) * 1.8,
+          localY,
+          -3.2 + Math.cos((this.walkTime + 0.1) * 1.2) * 0.8
+        ).applyEuler(camera3D.rotation);
 
-        // Bir sonraki noktaya dönerek yürü (3D lookAt)
-        const nextX = Math.sin(this.angle + 0.1) * this.radius;
-        const nextZ = -Math.cos(this.angle + 0.1) * this.radius;
-        cat3DModel.root.lookAt(nextX, posY, nextZ);
+        cat3DModel.root.lookAt(nextLocalPos);
 
         // Işığı kediyle birlikte taşı
-        catLight.position.set(posX, posY + 1.2, posZ);
+        catLight.position.copy(catWorldPos);
 
         // Bacak yürüme ve kuyruk sallanma animasyonu
-        const legSwing = Math.sin(this.walkTime * 3) * 0.45;
+        const legSwing = Math.sin(this.walkTime * 6) * 0.55;
         cat3DModel.legs[0].rotation.z = legSwing;
         cat3DModel.legs[1].rotation.z = -legSwing;
         cat3DModel.legs[2].rotation.z = -legSwing;
         cat3DModel.legs[3].rotation.z = legSwing;
-        cat3DModel.tail.rotation.z = Math.sin(this.walkTime * 2) * 0.35;
+        cat3DModel.tail.rotation.z = Math.sin(this.walkTime * 4) * 0.45;
 
-        // Ekrana 2D izdüşümü alarak parlayan zemin ışık izleri bırak
-        if (Math.floor(this.walkTime * 10) % 6 === 0) {
-          const screenPos = this.toScreenPosition(cat3DModel.root.position);
+        // Ekrana izdüşüm alarak zemin ışık izleri bırak
+        if (Math.floor(this.walkTime * 10) % 5 === 0) {
+          const screenPos = this.toScreenPosition(catWorldPos);
           if (screenPos) {
             lightTrails.push(new LightFootprint(screenPos.x, screenPos.y));
             for (let i = 0; i < 3; i++) {
