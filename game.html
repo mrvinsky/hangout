@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Hogwarts AR Ghostbusters ⚡</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: none;
+    }
+
+    body, html {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #000;
+      font-family: 'Outfit', sans-serif;
+      color: #fff;
+    }
+
+    /* Kamera Akışı (Video) */
+    #cameraVideo {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: 1;
+      transform: scaleX(-1); /* Ayna modu gerekirse ayarlanır */
+    }
+
+    /* Fallback Simüle Edilmiş Oda (Kamera İzni Yoksa) */
+    #simulatedRoom {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at center, #1b1329 0%, #08050d 100%);
+      z-index: 1;
+      display: none;
+    }
+
+    /* Ana Oyun Canvas'ı (Hayaletler, Büyü Işınları, Parçacıklar) */
+    #gameCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 5;
+      pointer-events: auto;
+    }
+
+    /* UI Arayüz Katmanı */
+    #hud {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 18px;
+    }
+
+    /* Üst Bar: Skor, Can, Radar */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(15, 10, 25, 0.65);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 215, 0, 0.25);
+      border-radius: 20px;
+      padding: 10px 18px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    }
+
+    .title-area h2 {
+      font-family: 'Cinzel', serif;
+      font-size: 15px;
+      color: #ffd166;
+      letter-spacing: 1.5px;
+      text-shadow: 0 0 10px rgba(255, 209, 102, 0.5);
+    }
+
+    .score-badge {
+      font-size: 20px;
+      font-weight: 800;
+      color: #00f5d4;
+      text-shadow: 0 0 12px rgba(0, 245, 212, 0.6);
+    }
+
+    .ghost-radar {
+      font-size: 13px;
+      color: #ff758f;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+    }
+
+    .radar-dot {
+      width: 8px;
+      height: 8px;
+      background: #ff0055;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #ff0055;
+      animation: pulseRadar 1s infinite;
+    }
+
+    @keyframes pulseRadar {
+      0%, 100% { opacity: 0.3; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.3); }
+    }
+
+    /* Nişangah (Crosshair) */
+    .crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 52px;
+      height: 52px;
+      border: 2px dashed rgba(255, 215, 0, 0.45);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 15;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+
+    .crosshair::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: #ffd166;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #ffd166;
+    }
+
+    .crosshair.locked {
+      border-color: #ff0055;
+      transform: translate(-50%, -50%) scale(1.2);
+    }
+
+    /* Alt Kısım: Asa ve Büyü Butonları */
+    .bottom-bar {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .selected-spell-label {
+      font-family: 'Cinzel', serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffd166;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 4px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 215, 0, 0.3);
+      text-shadow: 0 0 8px rgba(255, 209, 102, 0.6);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+
+    /* Büyü Yuvaları (Spell Dock) */
+    .spell-dock {
+      display: flex;
+      gap: 10px;
+      background: rgba(10, 6, 18, 0.75);
+      backdrop-filter: blur(16px);
+      padding: 10px 14px;
+      border-radius: 28px;
+      border: 1px solid rgba(255, 215, 0, 0.3);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+      max-width: 100vw;
+      overflow-x: auto;
+    }
+
+    .spell-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 68px;
+      height: 68px;
+      border-radius: 20px;
+      border: 2px solid transparent;
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      cursor: pointer;
+      font-family: 'Cinzel', serif;
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+    }
+
+    .spell-btn .icon {
+      font-size: 22px;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .spell-btn .name {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    /* Büyü Renkleri & Aktif Durumlar */
+    .spell-btn.stupefy {
+      border-color: rgba(255, 42, 109, 0.4);
+    }
+    .spell-btn.stupefy.active, .spell-btn.stupefy:active {
+      background: radial-gradient(circle, #ff2a6d, #70002b);
+      border-color: #ff2a6d;
+      box-shadow: 0 0 20px #ff2a6d;
+      transform: scale(1.08);
+    }
+
+    .spell-btn.expelliarmus {
+      border-color: rgba(255, 123, 0, 0.4);
+    }
+    .spell-btn.expelliarmus.active, .spell-btn.expelliarmus:active {
+      background: radial-gradient(circle, #ff7b00, #8f3400);
+      border-color: #ff7b00;
+      box-shadow: 0 0 20px #ff7b00;
+      transform: scale(1.08);
+    }
+
+    .spell-btn.patronum {
+      border-color: rgba(0, 245, 212, 0.4);
+    }
+    .spell-btn.patronum.active, .spell-btn.patronum:active {
+      background: radial-gradient(circle, #00f5d4, #005f52);
+      border-color: #00f5d4;
+      box-shadow: 0 0 25px #00f5d4;
+      transform: scale(1.08);
+    }
+
+    .spell-btn.lumos {
+      border-color: rgba(255, 215, 0, 0.4);
+    }
+    .spell-btn.lumos.active, .spell-btn.lumos:active {
+      background: radial-gradient(circle, #ffd166, #806200);
+      border-color: #ffd166;
+      box-shadow: 0 0 20px #ffd166;
+      transform: scale(1.08);
+    }
+
+    .spell-btn.avada {
+      border-color: rgba(57, 255, 20, 0.4);
+    }
+    .spell-btn.avada.active, .spell-btn.avada:active {
+      background: radial-gradient(circle, #39ff14, #0b6100);
+      border-color: #39ff14;
+      box-shadow: 0 0 25px #39ff14;
+      transform: scale(1.08);
+    }
+
+    /* Ekran Flaş Efektleri (Büyü Atıldığında) */
+    #flashOverlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      opacity: 0;
+      transition: opacity 0.15s ease-out;
+    }
+
+    /* Başlangıç / İzin Modalı */
+    #startModal {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: radial-gradient(circle, rgba(16, 9, 29, 0.95), #06030b);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .modal-card {
+      max-width: 420px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 215, 0, 0.3);
+      border-radius: 28px;
+      padding: 36px 26px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(255, 209, 102, 0.15);
+    }
+
+    .modal-card h1 {
+      font-family: 'Cinzel', serif;
+      font-size: 26px;
+      color: #ffd166;
+      margin-bottom: 12px;
+      text-shadow: 0 0 15px rgba(255, 209, 102, 0.5);
+    }
+
+    .modal-card p {
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.8);
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+
+    .btn-start {
+      font-family: 'Cinzel', serif;
+      font-size: 17px;
+      font-weight: 700;
+      padding: 15px 36px;
+      border-radius: 999px;
+      border: none;
+      background: linear-gradient(135deg, #ffd166, #ff7b00);
+      color: #0b0714;
+      cursor: pointer;
+      box-shadow: 0 0 30px rgba(255, 209, 102, 0.6);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .btn-start:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 40px rgba(255, 209, 102, 0.9);
+    }
+
+    /* Asanın Ekranda Görünümü */
+    .wand-hud {
+      position: fixed;
+      bottom: -40px;
+      right: 10%;
+      width: 180px;
+      height: 260px;
+      pointer-events: none;
+      z-index: 12;
+      transform-origin: bottom center;
+      transition: transform 0.15s ease;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Başlangıç / İzin Ekranı -->
+  <div id="startModal">
+    <div class="modal-card">
+      <div style="font-size: 48px; margin-bottom: 12px;">⚡ 👻 🪄</div>
+      <h1>Hogwarts AR Ghostbusters</h1>
+      <p>
+        The room is haunted by dark specters! Point your phone around the living room, switch your spells, and tap to cast your magic.
+      </p>
+      <button class="btn-start" id="startBtn">Draw Your Wand 🪄</button>
+    </div>
+  </div>
+
+  <!-- Canlı Kamera Akışı -->
+  <video id="cameraVideo" playsinline autoplay muted></video>
+  <div id="simulatedRoom"></div>
+
+  <!-- Çizim Canvas'ı (Hayaletler + Işınlar) -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Büyü Flaş Katmanı -->
+  <div id="flashOverlay"></div>
+
+  <!-- Nişangah -->
+  <div class="crosshair" id="crosshair"></div>
+
+  <!-- HUD Arayüzü -->
+  <div id="hud">
+    <div class="top-bar">
+      <div class="title-area">
+        <h2>DEFENSE AGAINST THE DARK ARTS</h2>
+        <div class="ghost-radar">
+          <span class="radar-dot"></span>
+          <span id="ghostCountText">Active Specters: 3</span>
+        </div>
+      </div>
+      <div class="score-badge">
+        <span id="scoreText">0</span> pts
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="selected-spell-label" id="spellLabel">STUPEFY ⚡</div>
+
+      <div class="spell-dock">
+        <!-- Büyü Butonları -->
+        <button class="spell-btn stupefy active" data-spell="stupefy">
+          <span class="icon">🔴</span>
+          <span class="name">Stupefy</span>
+        </button>
+
+        <button class="spell-btn expelliarmus" data-spell="expelliarmus">
+          <span class="icon">🔥</span>
+          <span class="name">Incendio</span>
+        </button>
+
+        <button class="spell-btn patronum" data-spell="patronum">
+          <span class="icon">🦌</span>
+          <span class="name">Patronus</span>
+        </button>
+
+        <button class="spell-btn lumos" data-spell="lumos">
+          <span class="icon">✨</span>
+          <span class="name">Lumos</span>
+        </button>
+
+        <button class="spell-btn avada" data-spell="avada">
+          <span class="icon">💚</span>
+          <span class="name">Avada</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- SES SENTEZLEYİCİSİ (Web Audio API ile Büyü ve Hayalet Sesleri) ---
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) audioCtx = new AudioCtx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playSpellSound(type) {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+
+      if (type === 'stupefy') {
+        // Keskin Kırmızı Büyü Sesi
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.exponentialRampToValueAtTime(120, now + 0.28);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.29);
+      } else if (type === 'expelliarmus') {
+        // Ateş / Yanma Sesi (Incendio)
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.exponentialRampToValueAtTime(70, now + 0.35);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.36);
+      } else if (type === 'patronum') {
+        // İlahi & Parlak Patronus Işığı
+        const osc = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc2.type = 'sine';
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.exponentialRampToValueAtTime(980, now + 0.6);
+        osc2.frequency.setValueAtTime(780, now);
+        osc2.frequency.exponentialRampToValueAtTime(1400, now + 0.6);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.65);
+        osc.connect(gain);
+        osc2.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc2.start(now);
+        osc.stop(now + 0.66);
+        osc2.stop(now + 0.66);
+      } else if (type === 'lumos') {
+        // Parlama çınlaması
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1200, now);
+        osc.frequency.exponentialRampToValueAtTime(400, now + 0.4);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.41);
+      } else if (type === 'avada') {
+        // Ölümcül Yeşil Lanet Sesi
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.5);
+        gain.gain.setValueAtTime(0.45, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.51);
+      }
+    }
+
+    function playGhostDeathSound() {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.exponentialRampToValueAtTime(60, now + 0.4);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.41);
+    }
+
+    // --- KAMERA & GYRO ENTEGRASYONU ---
+    const cameraVideo = document.getElementById('cameraVideo');
+    const simulatedRoom = document.getElementById('simulatedRoom');
+
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false
+        });
+        cameraVideo.srcObject = stream;
+        cameraVideo.play();
+      } catch (err) {
+        console.warn("Camera could not be accessed, using fallback dark chamber:", err);
+        simulatedRoom.style.display = 'block';
+      }
+    }
+
+    // AR Jiroskop / Ekran Döndürme Verileri
+    let camYaw = 0;   // Sağa - Sola açı
+    let camPitch = 0; // Yukarı - Aşağı açı
+
+    // Telefonun Jiroskop sensörü
+    window.addEventListener('deviceorientation', (e) => {
+      if (e.alpha !== null && e.beta !== null) {
+        camYaw = (e.alpha * Math.PI) / 180;
+        camPitch = (e.beta * Math.PI) / 180;
+      }
+    });
+
+    // Bilgisayarda / Dokunmatik ekranda fareyle / sürükleyerek etrafa bakma (Fallback)
+    let isDragging = false;
+    let startX = 0, startY = 0;
+    window.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('#hud') || e.target.closest('#startModal')) return;
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      startX = e.clientX;
+      startY = e.clientY;
+      camYaw -= dx * 0.005;
+      camPitch += dy * 0.005;
+    });
+
+    window.addEventListener('pointerup', () => { isDragging = false; });
+
+    // --- OYUN CANVAS & NESNELER ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const flashOverlay = document.getElementById('flashOverlay');
+    const scoreText = document.getElementById('scoreText');
+    const ghostCountText = document.getElementById('ghostCountText');
+    const crosshair = document.getElementById('crosshair');
+
+    let width, height;
+    function resizeCanvas() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    let score = 0;
+    let selectedSpell = 'stupefy';
+
+    // Büyü Tanımları
+    const SPELLS = {
+      stupefy: {
+        name: 'Stupefy ⚡',
+        color: '#ff2a6d',
+        lightColor: 'rgba(255, 42, 109, 0.4)',
+        damage: 35,
+        speed: 28,
+        flash: 'rgba(255, 42, 109, 0.35)'
+      },
+      expelliarmus: {
+        name: 'Incendio 🔥',
+        color: '#ff7b00',
+        lightColor: 'rgba(255, 123, 0, 0.4)',
+        damage: 50,
+        speed: 24,
+        flash: 'rgba(255, 123, 0, 0.35)'
+      },
+      patronum: {
+        name: 'Expecto Patronum 🦌',
+        color: '#00f5d4',
+        lightColor: 'rgba(0, 245, 212, 0.5)',
+        damage: 100,
+        speed: 35,
+        flash: 'rgba(0, 245, 212, 0.45)'
+      },
+      lumos: {
+        name: 'Lumos Maxima ✨',
+        color: '#ffd166',
+        lightColor: 'rgba(255, 209, 102, 0.5)',
+        damage: 20,
+        speed: 22,
+        flash: 'rgba(255, 209, 102, 0.5)'
+      },
+      avada: {
+        name: 'Avada Kedavra 💚',
+        color: '#39ff14',
+        lightColor: 'rgba(57, 255, 20, 0.5)',
+        damage: 250,
+        speed: 40,
+        flash: 'rgba(57, 255, 20, 0.5)'
+      }
+    };
+
+    // Büyü Seçimi Butonları
+    document.querySelectorAll('.spell-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.spell-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedSpell = btn.dataset.spell;
+        document.getElementById('spellLabel').textContent = SPELLS[selectedSpell].name;
+        if (navigator.vibrate) navigator.vibrate(20);
+      });
+    });
+
+    // --- HAYALETLER (GHOSTS) ---
+    class Ghost {
+      constructor() {
+        this.reset();
+      }
+
+      reset() {
+        // 3D Küresel Koordinatlar (Salonda 360 derece etrafımızda konumlanırlar)
+        this.theta = Math.random() * Math.PI * 2; // Yatay açı
+        this.phi = (Math.random() - 0.5) * 1.2;  // Dikey açı
+        this.distance = 400 + Math.random() * 300; // Mesafesi
+
+        this.maxHealth = 100;
+        this.health = this.maxHealth;
+        this.type = Math.random() > 0.4 ? 'slimer' : (Math.random() > 0.5 ? 'dementor' : 'pumpkin');
+        this.floatOffset = Math.random() * 100;
+        this.alpha = 0.85;
+        this.isDying = false;
+        this.deathTimer = 0;
+      }
+
+      update() {
+        // Yavaşça süzülme hareketi
+        this.floatOffset += 0.04;
+        this.theta += 0.003; // Salon etrafında yavaşça döner
+
+        if (this.isDying) {
+          this.deathTimer++;
+          this.alpha = Math.max(0, 1 - this.deathTimer / 25);
+          if (this.alpha <= 0) {
+            this.reset();
+          }
+        }
+      }
+
+      // Ekrana İzdüşümü (3D -> 2D Ekran Konumu)
+      getScreenPosition() {
+        // Kamera açısına göre fark hesapla
+        let relTheta = this.theta - camYaw;
+        while (relTheta > Math.PI) relTheta -= Math.PI * 2;
+        while (relTheta < -Math.PI) relTheta += Math.PI * 2;
+
+        let relPhi = this.phi - camPitch;
+
+        // Görüş alanı (FOV) sınırları içinde mi?
+        const fov = 1.3;
+        if (Math.abs(relTheta) > fov) return null; // Arkada kalıyor
+
+        const screenX = width / 2 + (relTheta / fov) * (width * 0.9);
+        const screenY = height / 2 + (relPhi / fov) * (height * 0.9) + Math.sin(this.floatOffset) * 14;
+        const scale = Math.max(0.4, 600 / this.distance);
+
+        return { x: screenX, y: screenY, scale: scale };
+      }
+
+      draw() {
+        const pos = this.getScreenPosition();
+        if (!pos) return;
+
+        ctx.save();
+        ctx.translate(pos.x, pos.y);
+        ctx.scale(pos.scale, pos.scale);
+        ctx.globalAlpha = this.alpha;
+
+        const pulse = Math.sin(this.floatOffset) * 5;
+
+        if (this.type === 'slimer') {
+          // Neon Yeşil Hayalet (Slimer Tarzı)
+          ctx.shadowBlur = 35;
+          ctx.shadowColor = '#00f5d4';
+
+          ctx.fillStyle = 'rgba(0, 245, 212, 0.4)';
+          ctx.beginPath();
+          ctx.arc(0, -10 + pulse, 38, Math.PI, 0, false);
+          ctx.bezierCurveTo(42, 30, 25, 45, 0, 50 + pulse);
+          ctx.bezierCurveTo(-25, 45, -42, 30, -38, -10 + pulse);
+          ctx.fill();
+
+          // Gözler
+          ctx.fillStyle = '#fff';
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = '#fff';
+          ctx.beginPath();
+          ctx.arc(-14, -8 + pulse, 9, 0, Math.PI * 2);
+          ctx.arc(14, -8 + pulse, 9, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#06030b';
+          ctx.beginPath();
+          ctx.arc(-13, -8 + pulse, 4.5, 0, Math.PI * 2);
+          ctx.arc(15, -8 + pulse, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Sinsi Gülümseme
+          ctx.strokeStyle = '#06030b';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(0, 14 + pulse, 14, 0.2, Math.PI - 0.2);
+          ctx.stroke();
+
+        } else if (this.type === 'dementor') {
+          // Ruh Emici / Karanlık Hayalet
+          ctx.shadowBlur = 45;
+          ctx.shadowColor = '#b5179e';
+
+          ctx.fillStyle = 'rgba(114, 9, 183, 0.55)';
+          ctx.beginPath();
+          ctx.arc(0, -15 + pulse, 42, Math.PI, 0, false);
+          ctx.lineTo(38, 55 + pulse);
+          ctx.lineTo(15, 40 + pulse);
+          ctx.lineTo(0, 60 + pulse);
+          ctx.lineTo(-18, 40 + pulse);
+          ctx.lineTo(-38, 55 + pulse);
+          ctx.closePath();
+          ctx.fill();
+
+          // Parlayan Kırmızı Gözler
+          ctx.fillStyle = '#ff0055';
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = '#ff0055';
+          ctx.beginPath();
+          ctx.arc(-14, -12 + pulse, 6, 0, Math.PI * 2);
+          ctx.arc(14, -12 + pulse, 6, 0, Math.PI * 2);
+          ctx.fill();
+
+        } else {
+          // Balkabağı Başlı Cadı Hayaleti 🎃
+          ctx.shadowBlur = 35;
+          ctx.shadowColor = '#ff7b00';
+
+          ctx.fillStyle = 'rgba(255, 123, 0, 0.85)';
+          ctx.beginPath();
+          ctx.ellipse(0, 0 + pulse, 36, 30, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Oyulmuş Ağız ve Gözler
+          ctx.fillStyle = '#000';
+          ctx.beginPath();
+          ctx.moveTo(-16, -6 + pulse);
+          ctx.lineTo(-8, -14 + pulse);
+          ctx.lineTo(0, -6 + pulse);
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.moveTo(0, -6 + pulse);
+          ctx.lineTo(8, -14 + pulse);
+          ctx.lineTo(16, -6 + pulse);
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(0, 10 + pulse, 12, 0, Math.PI);
+          ctx.fill();
+        }
+
+        // Can Barı
+        if (this.health < this.maxHealth) {
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+          ctx.fillRect(-35, -55 + pulse, 70, 7);
+          ctx.fillStyle = this.health > 40 ? '#00f5d4' : '#ff0055';
+          ctx.fillRect(-35, -55 + pulse, (this.health / this.maxHealth) * 70, 7);
+        }
+
+        ctx.restore();
+      }
+    }
+
+    // Hayaletleri Başlat (Salonda 4 adet)
+    const ghosts = [new Ghost(), new Ghost(), new Ghost(), new Ghost()];
+
+    // --- BÜYÜ IŞINI & PARÇACIKLAR ---
+    const spellBeams = [];
+    const particles = [];
+
+    class SpellBeam {
+      constructor(targetX, targetY, spellKey) {
+        this.startX = width * 0.85;  // Asanın sağ alttaki ucu
+        this.startY = height + 10;
+        this.targetX = targetX;
+        this.targetY = targetY;
+        this.currentX = this.startX;
+        this.currentY = this.startY;
+        this.spell = SPELLS[spellKey];
+        this.progress = 0;
+        this.isDone = false;
+      }
+
+      update() {
+        this.progress += 0.08;
+        this.currentX = this.startX + (this.targetX - this.startX) * this.progress;
+        this.currentY = this.startY + (this.targetY - this.startY) * this.progress;
+
+        // Işın boyu kıvılcım parçacıkları saç
+        for (let i = 0; i < 3; i++) {
+          particles.push(new Particle(
+            this.currentX + (Math.random() - 0.5) * 15,
+            this.currentY + (Math.random() - 0.5) * 15,
+            this.spell.color
+          ));
+        }
+
+        if (this.progress >= 1) {
+          this.isDone = true;
+          this.onHit();
+        }
+      }
+
+      onHit() {
+        // Hedefte büyük sihirli patlama oluştur
+        for (let i = 0; i < 30; i++) {
+          particles.push(new Particle(this.targetX, this.targetY, this.spell.color, true));
+        }
+
+        // Hayalet vuruldu mu kontrol et
+        ghosts.forEach(ghost => {
+          const pos = ghost.getScreenPosition();
+          if (!pos || ghost.isDying) return;
+
+          const dist = Math.hypot(this.targetX - pos.x, this.targetY - pos.y);
+          if (dist < 75 * pos.scale) {
+            ghost.health -= this.spell.damage;
+            if (navigator.vibrate) navigator.vibrate(40);
+
+            if (ghost.health <= 0) {
+              ghost.isDying = true;
+              playGhostDeathSound();
+              score += 150;
+              scoreText.textContent = score;
+            } else {
+              score += 25;
+              scoreText.textContent = score;
+            }
+          }
+        });
+      }
+
+      draw() {
+        ctx.save();
+        ctx.strokeStyle = this.spell.color;
+        ctx.lineWidth = 6;
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = this.spell.color;
+
+        // Zikzaklı / Yıldırım Büyü Hattı
+        ctx.beginPath();
+        ctx.moveTo(this.startX, this.startY);
+        const steps = 6;
+        for (let i = 1; i <= steps; i++) {
+          const t = (i / steps) * this.progress;
+          const x = this.startX + (this.targetX - this.startX) * t + (Math.random() - 0.5) * 12;
+          const y = this.startY + (this.targetY - this.startY) * t + (Math.random() - 0.5) * 12;
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Çekirdek Beyaz Işık
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        ctx.restore();
+      }
+    }
+
+    class Particle {
+      constructor(x, y, color, isExplosion = false) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        const speed = isExplosion ? 3 + Math.random() * 6 : 1 + Math.random() * 2;
+        const angle = Math.random() * Math.PI * 2;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.alpha = 1;
+        this.size = 3 + Math.random() * 3.5;
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.alpha -= 0.035;
+      }
+
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.alpha);
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // --- BÜYÜ YAPMA (Ekrana Dokununca Ateşle) ---
+    function castSpell(targetX, targetY) {
+      initAudio();
+      const spell = SPELLS[selectedSpell];
+
+      // Ekran Flaşı
+      flashOverlay.style.background = spell.flash;
+      flashOverlay.style.opacity = '1';
+      setTimeout(() => { flashOverlay.style.opacity = '0'; }, 100);
+
+      playSpellSound(selectedSpell);
+      if (navigator.vibrate) navigator.vibrate(35);
+
+      spellBeams.push(new SpellBeam(targetX, targetY, selectedSpell));
+    }
+
+    // Ekranın ortasına veya dokunulan noktaya büyü at
+    canvas.addEventListener('click', (e) => {
+      castSpell(e.clientX, e.clientY);
+    });
+
+    // Nişangah Takibi (Bir hayalete kilitlendiğinde kırmızıya dönsün)
+    function checkCrosshairLock() {
+      let isLocked = false;
+      ghosts.forEach(ghost => {
+        const pos = ghost.getScreenPosition();
+        if (!pos || ghost.isDying) return;
+        const dist = Math.hypot(width / 2 - pos.x, height / 2 - pos.y);
+        if (dist < 60 * pos.scale) isLocked = true;
+      });
+
+      if (isLocked) crosshair.classList.add('locked');
+      else crosshair.classList.remove('locked');
+    }
+
+    // --- ANA OYUN DÖNGÜSÜ (Game Loop) ---
+    function gameLoop() {
+      ctx.clearRect(0, 0, width, height);
+
+      // Hayaletleri Güncelle ve Çiz
+      ghosts.forEach(ghost => {
+        ghost.update();
+        ghost.draw();
+      });
+
+      // Büyü Işınlarını Çiz
+      for (let i = spellBeams.length - 1; i >= 0; i--) {
+        const beam = spellBeams[i];
+        beam.update();
+        beam.draw();
+        if (beam.isDone) spellBeams.splice(i, 1);
+      }
+
+      // Parçacıkları Çiz
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.update();
+        p.draw();
+        if (p.alpha <= 0) particles.splice(i, 1);
+      }
+
+      checkCrosshairLock();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Başlat Butonuna Basınca
+    document.getElementById('startBtn').addEventListener('click', () => {
+      initAudio();
+      startCamera();
+      document.getElementById('startModal').style.display = 'none';
+      gameLoop();
+    });
+  </script>
+</body>
+</html>
