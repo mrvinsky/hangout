@@ -240,7 +240,7 @@ export const ARScreen: React.FC<ARScreenProps> = ({ profile, onOpenUpload, onOpe
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: 'transparent',
     position: 'relative',
     overflow: 'hidden',
     width: '100%',
