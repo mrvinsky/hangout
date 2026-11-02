@@ -1307,20 +1307,47 @@
           }
         });
 
-        // 9. Kalın ve Pofuduk Kuyruk (Thick British Shorthair Tail - 300 parçacık)
-        for (let s = 0; s < 40; s++) {
-          const t = s / 40;
-          const thick = (1 - t * 0.4) * 9;
-          for (let r = -3; r <= 3; r++) {
+        // 9. British Shorthair Silindirik Kalın Kuyruk (Cylindrical Plush Tail - 560 parçacık)
+        const tailLength = 54;
+        const tailRadius = 9.2; // Tam etli, sabit silindir kalınlığı (British Shorthair standardı)
+        const numSlices = 36;
+        const radialPts = 14;
+
+        for (let s = 0; s < numSlices; s++) {
+          const t = s / numSlices;
+          const dist = t * tailLength;
+          for (let r = 0; r < radialPts; r++) {
+            const angle = (r / radialPts) * Math.PI * 2;
+            const normOffset = Math.cos(angle);
+            let col = "#57636f"; // Ana duman grisi kürk
+            if (normOffset < -0.6) col = "#8a9aa9"; // Üst ışık
+            else if (normOffset > 0.6) col = "#424c55"; // Alt gölge
+            else if (Math.abs(normOffset) > 0.85) col = "#a2d2ff"; // Rim ışığı
+
             pts.push({
-              type: "tail",
-              t,
-              rOffset: (r / 3) * thick,
+              type: "tail_cyl",
+              dist,
+              rOffset: normOffset * tailRadius,
               size: 1.5,
-              color: Math.abs(r) === 3 ? "#a2d2ff" : "#57636f",
+              color: col,
               phase: Math.random() * 10
             });
           }
+        }
+
+        // Silindirin Ucu: Yuvarlak kubbe kapak (Dome tip - 60 parçacık)
+        for (let i = 0; i < 60; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const r = Math.sqrt(Math.random()) * tailRadius;
+          const capDist = tailLength + Math.sqrt(Math.max(0, tailRadius * tailRadius - r * r)) * 0.7;
+          pts.push({
+            type: "tail_cyl",
+            dist: capDist,
+            rOffset: Math.sin(a) * r,
+            size: 1.5,
+            color: "#6c7b8a",
+            phase: Math.random() * 10
+          });
         }
 
         // 10. Kutsal Lord Boban Altın Halesi (120 parçacık)
@@ -1388,6 +1415,24 @@
         targetCtx.moveTo(11, -26); targetCtx.lineTo(18, -54); targetCtx.lineTo(25, -26); targetCtx.closePath(); targetCtx.fill();
         targetCtx.beginPath();
         targetCtx.moveTo(37, -26); targetCtx.lineTo(44, -54); targetCtx.lineTo(51, -26); targetCtx.closePath(); targetCtx.fill();
+
+        // Silindirik Kalın Kuyruk Tabanı (Etli, pofuduk, tek parça silindir gövde)
+        const tailBaseX = -45, tailBaseY = 6;
+        const tailSway = Math.sin(this.walkCycle * 2.2) * 0.14;
+        const tipTheta = (Math.PI * 0.86) + tailSway - 0.38;
+        const tipX = tailBaseX + Math.cos(tipTheta) * 54;
+        const tipY = tailBaseY - Math.sin(tipTheta) * 54;
+
+        targetCtx.strokeStyle = "rgba(85, 98, 111, 0.85)";
+        targetCtx.lineWidth = 19; // Tam 19px kalınlığında etli silindir!
+        targetCtx.lineCap = "round";
+        targetCtx.beginPath();
+        targetCtx.moveTo(tailBaseX, tailBaseY);
+        targetCtx.quadraticCurveTo(
+          tailBaseX - 30, tailBaseY - 8 + tailSway * 18,
+          tipX, tipY
+        );
+        targetCtx.stroke();
         targetCtx.restore();
 
         // 3. 4,400+ ULTRA YOĞUN IŞIK PARÇACIĞINI HESAPLA VE ÇİZ
@@ -1418,12 +1463,17 @@
             const swing = Math.sin(this.walkCycle * 4 + p.phaseOffset) * 0.4;
             lx = p.hipX + p.pawOffsetX + Math.sin(swing) * 27 + jitterX * 0.3;
             ly = p.hipY + p.pawOffsetY + Math.cos(swing) * 27 + jitterY * 0.3;
-          } else if (p.type === "tail") {
-            const t = p.t;
-            const bx = -45 - t * 45;
-            const by = 8 - t * 40 + Math.sin(tailWag + t * 2) * 24;
-            lx = bx + p.rOffset + jitterX * 0.5;
-            ly = by + jitterY * 0.5;
+          } else if (p.type === "tail_cyl") {
+            const tailBaseX = -45, tailBaseY = 6;
+            const tailSway = Math.sin(this.walkCycle * 2.2) * 0.14;
+            const t = p.dist / 54;
+            // Akıcı, doğal silindirik eksen eğrisi
+            const theta = (Math.PI * 0.86) + tailSway - t * 0.38;
+            const cx = tailBaseX + Math.cos(theta) * p.dist;
+            const cy = tailBaseY - Math.sin(theta) * p.dist;
+            // Silindire dik normal doğrultusunda kalınlık
+            lx = cx - Math.sin(theta) * p.rOffset + jitterX * 0.4;
+            ly = cy - Math.cos(theta) * p.rOffset + jitterY * 0.4;
           } else if (p.type === "halo" || p.type === "halo_inner") {
             const a = p.angle + haloOrbit;
             lx = 34 + Math.cos(a) * p.rX + jitterX * 0.2;
