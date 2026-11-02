@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { analyzePetPhoto } from '../services/geminiService';
-import { PetAnalysisResult, PetProfile } from '../types/pet';
+import { CoatPattern, PetAnalysisResult, PetProfile } from '../types/pet';
 
 interface PetUploadScreenProps {
   onPetCreated: (profile: PetProfile) => void;
@@ -26,6 +26,41 @@ const FUR_PRESETS = [
   { label: 'Krem / Bal', hex: '#fde047' },
   { label: 'Çikolata', hex: '#582f0e' },
 ];
+
+const SECONDARY_PRESETS = [
+  { label: 'Beyaz', hex: '#f1f5f9' },
+  { label: 'Krem', hex: '#f5e6c8' },
+  { label: 'Açık Gri', hex: '#9ca3af' },
+  { label: 'Tarçın', hex: '#b45309' },
+  { label: 'Koyu Kahve', hex: '#3f2a1d' },
+];
+
+const PATTERN_OPTIONS: { value: CoatPattern; label: string }[] = [
+  { value: 'solid', label: 'Düz' },
+  { value: 'tabby', label: 'Tekir' },
+  { value: 'bicolor', label: 'İki Renk' },
+  { value: 'calico', label: 'Calico' },
+  { value: 'points', label: 'Siyam' },
+];
+
+/** Görseli en uzun kenarı maxSize olacak şekilde küçültüp JPEG data URL döndürür */
+function downscaleImage(src: string, maxSize: number, quality: number): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new (window as any).Image();
+    img.onload = () => {
+      const ratio = Math.min(1, maxSize / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * ratio);
+      canvas.height = Math.round(img.height * ratio);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return resolve(src);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(src);
+    img.src = src;
+  });
+}
 
 const EYE_PRESETS = [
   { label: 'Kehribar', hex: '#ffb703' },
@@ -43,6 +78,8 @@ export const PetUploadScreen: React.FC<PetUploadScreenProps> = ({ onPetCreated, 
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [selectedFur, setSelectedFur] = useState<string>('#6b7280');
   const [selectedEye, setSelectedEye] = useState<string>('#ffb703');
+  const [selectedSecondary, setSelectedSecondary] = useState<string>('#9ca3af');
+  const [selectedPattern, setSelectedPattern] = useState<CoatPattern>('solid');
   const [analysis, setAnalysis] = useState<PetAnalysisResult | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -58,11 +95,13 @@ export const PetUploadScreen: React.FC<PetUploadScreenProps> = ({ onPetCreated, 
     const file = e.target?.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         const result = event.target?.result as string;
-        setPhotoUri(result);
-        setBase64Data(result);
-        sampleImageColor(result);
+        // Gemini'ye ~768px gönder (proxy gövde limiti), kayıt için küçük küçük resim sakla
+        const forAnalysis = await downscaleImage(result, 768, 0.85);
+        setPhotoUri(await downscaleImage(result, 256, 0.75));
+        setBase64Data(forAnalysis);
+        sampleImageColor(forAnalysis);
       };
       reader.readAsDataURL(file);
     }
@@ -104,10 +143,12 @@ export const PetUploadScreen: React.FC<PetUploadScreenProps> = ({ onPetCreated, 
 
   const handleStartAnalysis = async () => {
     setIsAnalyzing(true);
-    const result = await analyzePetPhoto(base64Data || 'mock_data', apiKey || undefined);
+    const result = await analyzePetPhoto(base64Data, apiKey || undefined);
     setAnalysis(result);
     setSelectedFur(result.furColorHex || selectedFur);
     setSelectedEye(result.eyeColorHex || selectedEye);
+    setSelectedSecondary(result.secondaryColorHex || selectedSecondary);
+    setSelectedPattern(result.coatPattern || selectedPattern);
     if (!petName || petName === 'Boban') {
       const inferredName = result.patronusTitle.split(' ')[0] || 'Dost';
       setPetName(inferredName);
@@ -123,8 +164,9 @@ export const PetUploadScreen: React.FC<PetUploadScreenProps> = ({ onPetCreated, 
       species: analysis?.species || 'cat',
       eyeColorHex: selectedEye,
       furColorHex: selectedFur,
-      secondaryColorHex: analysis?.secondaryColorHex || '#9ca3af',
-      coatPattern: analysis?.coatPattern || 'solid',
+      secondaryColorHex: selectedSecondary,
+      coatPattern: selectedPattern,
+      auraColorHex: analysis?.patronusAuraColor,
       personality: analysis?.personality || 'Asil ve Sevgi Dolu Muhafız',
       patronusTitle: analysis?.patronusTitle || `Lord ${petName || 'Boban'} the Guardian`,
       mode: 'patronus',
@@ -219,6 +261,46 @@ export const PetUploadScreen: React.FC<PetUploadScreenProps> = ({ onPetCreated, 
           </View>
         </View>
 
+        {/* İkincil Renk (göğüs / pati / siyam gövdesi) */}
+        <View style={styles.paletteSection}>
+          <Text style={styles.sectionTitle}>İkincil Renk (Göğüs / Pati):</Text>
+          <View style={styles.swatchRow}>
+            {SECONDARY_PRESETS.map((p) => {
+              const isSelected = selectedSecondary.toLowerCase() === p.hex.toLowerCase();
+              return (
+                <TouchableOpacity
+                  key={p.hex}
+                  style={[styles.swatchBtn, { backgroundColor: p.hex }, isSelected && styles.swatchSelected]}
+                  onPress={() => setSelectedSecondary(p.hex)}
+                >
+                  {isSelected && <Text style={[styles.checkIcon, { color: '#0b0712' }]}>✓</Text>}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Kürk Deseni */}
+        <View style={styles.paletteSection}>
+          <Text style={styles.sectionTitle}>Kürk Deseni:</Text>
+          <View style={styles.swatchRow}>
+            {PATTERN_OPTIONS.map((opt) => {
+              const isSelected = selectedPattern === opt.value;
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[styles.patternChip, isSelected && styles.patternChipSelected]}
+                  onPress={() => setSelectedPattern(opt.value)}
+                >
+                  <Text style={[styles.patternChipText, isSelected && styles.patternChipTextSelected]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
         {/* İsteğe Bağlı Gemini API Key Butonu */}
         <TouchableOpacity
           style={styles.keyToggleBtn}
@@ -297,6 +379,27 @@ export const PetUploadScreen: React.FC<PetUploadScreenProps> = ({ onPetCreated, 
 };
 
 const styles = StyleSheet.create({
+  patternChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  patternChipSelected: {
+    backgroundColor: '#ffd166',
+    borderColor: '#ffd166',
+  },
+  patternChipText: {
+    color: '#cbd5e1',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  patternChipTextSelected: {
+    color: '#0b0712',
+    fontWeight: 'bold',
+  },
   container: {
     flex: 1,
     backgroundColor: '#0c0814',

@@ -3,13 +3,15 @@ import { StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { ARScreen } from './src/screens/ARScreen';
 import { PetUploadScreen } from './src/screens/PetUploadScreen';
+import { MemorialScreen } from './src/screens/MemorialScreen';
+import { loadActivePet, savePet, setActivePet } from './src/services/petStorage';
 import { PetProfile } from './src/types/pet';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<'ar' | 'upload' | 'memorial'>('ar');
 
-  // Başlangıç Varsayılan Pet Profili: Lord Boban (British Shorthair)
-  const [petProfile, setPetProfile] = useState<PetProfile>({
+  // Son seçilen kayıtlı pet; yoksa varsayılan Lord Boban (British Shorthair)
+  const [petProfile, setPetProfile] = useState<PetProfile>(() => loadActivePet() || {
     id: 'boban_01',
     name: 'Boban',
     breed: 'British Shorthair (British Blue)',
@@ -24,9 +26,15 @@ export default function App() {
     createdAt: Date.now(),
   });
 
-  const handlePetCreated = (newProfile: PetProfile) => {
-    setPetProfile(newProfile);
+  const activatePet = (profile: PetProfile) => {
+    setActivePet(profile.id);
+    setPetProfile(profile);
     setCurrentScreen('ar');
+  };
+
+  const handlePetCreated = (newProfile: PetProfile) => {
+    savePet(newProfile);
+    activatePet(newProfile);
   };
 
   return (
@@ -44,6 +52,14 @@ export default function App() {
         <PetUploadScreen
           onPetCreated={handlePetCreated}
           onCancel={() => setCurrentScreen('ar')}
+        />
+      )}
+
+      {currentScreen === 'memorial' && (
+        <MemorialScreen
+          activePetId={petProfile.id}
+          onSelectPet={activatePet}
+          onClose={() => setCurrentScreen('ar')}
         />
       )}
     </View>

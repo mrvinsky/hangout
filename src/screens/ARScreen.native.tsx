@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, NativeModules, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { View, StyleSheet, NativeModules, Text, TouchableOpacity, ActivityIndicator, Vibration } from 'react-native';
+import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { PetProfile } from '../types/pet';
 
@@ -20,9 +20,22 @@ export const ARScreen: React.FC<ARScreenProps> = () => {
     }
   }, [permission]);
 
-  // Expo Go Metro dev server adresini al
+  // Arayüz web uygulamasında; üretimde EXPO_PUBLIC_WEB_URL (Vercel), geliştirmede Metro dev server
   const scriptURL = (NativeModules as any)?.SourceCode?.scriptURL;
   const devHost = scriptURL?.match(/^https?:\/\/[^/]+/)?.[0] || 'http://192.168.1.100:8081';
+  const webUrl = `${process.env.EXPO_PUBLIC_WEB_URL || devHost}/?embed=native`;
+
+  // WebView → native köprüsü
+  const handleMessage = (event: WebViewMessageEvent) => {
+    let msg: { type?: string };
+    try {
+      msg = JSON.parse(event.nativeEvent.data);
+    } catch {
+      return;
+    }
+    if (msg.type === 'haptic') Vibration.vibrate([0, 25, 60, 25, 60, 25]);
+    if (msg.type === 'flipCamera') setFacing((f) => (f === 'back' ? 'front' : 'back'));
+  };
 
   // WebView içindeki HTML'in arka planını saydam yap
   const injectedJS = `
@@ -64,7 +77,8 @@ export const ARScreen: React.FC<ARScreenProps> = () => {
 
       {/* 2. 3D WebGL Patronus Kedisi & Kontroller (Tam Şeffaf Overlay) */}
       <WebView
-        source={{ uri: devHost }}
+        source={{ uri: webUrl }}
+        onMessage={handleMessage}
         style={styles.webview}
         opaque={false}
         allowsInlineMediaPlayback
@@ -76,15 +90,6 @@ export const ARScreen: React.FC<ARScreenProps> = () => {
         injectedJavaScript={injectedJS}
       />
 
-      {/* 3. Yerel Kamera Çevirme Butonu (Ön / Arka) */}
-      <TouchableOpacity
-        style={styles.flipBtn}
-        onPress={() => setFacing(facing === 'back' ? 'front' : 'back')}
-      >
-        <Text style={styles.flipBtnText}>
-          🔄 {facing === 'back' ? 'Ön Kamera' : 'Arka Kamera'}
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 };
@@ -98,23 +103,6 @@ const styles = StyleSheet.create({
   webview: {
     flex: 1,
     backgroundColor: 'transparent',
-  },
-  flipBtn: {
-    position: 'absolute',
-    top: 50,
-    right: 16,
-    zIndex: 100,
-    backgroundColor: 'rgba(18, 14, 26, 0.85)',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#ffd166',
-  },
-  flipBtnText: {
-    color: '#ffd166',
-    fontSize: 12,
-    fontWeight: 'bold',
   },
   loadingContainer: {
     flex: 1,

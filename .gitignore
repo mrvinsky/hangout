@@ -6,3 +6,5 @@ scratch/
 .venv/
 *.pyc
 __pycache__/
+.env
+.env.local

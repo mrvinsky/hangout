@@ -526,7 +526,7 @@
 
     // GLB Yükleme Başlat
     const gltfLoader = new THREE.GLTFLoader();
-    gltfLoader.load("cat/source/Cat.glb", (gltf) => {
+    gltfLoader.load("../public/models/cat/source/Cat.glb", (gltf) => {
       catScene = gltf.scene;
       catScene.scale.set(catScale, catScale, catScale);
       catScene.position.set(0, -16.0, 0);

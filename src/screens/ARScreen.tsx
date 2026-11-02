@@ -3,6 +3,16 @@ import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Platform } 
 import { PetCompanionEngine } from '../engine3d/PetCompanionEngine';
 import { PetProfile } from '../types/pet';
 import { generatePetMessage } from '../services/geminiService';
+import { addMemory } from '../services/petStorage';
+
+// Native uygulama bu sayfayı kendi kamerasının üstünde şeffaf WebView olarak açar (?embed=native).
+// Bu durumda kamera native tarafta çalışır; titreşim ve kamera çevirme mesajla native'e iletilir.
+const isNativeEmbed =
+  typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('embed') === 'native';
+
+function postToNative(message: { type: 'haptic' | 'flipCamera' }) {
+  (window as any).ReactNativeWebView?.postMessage(JSON.stringify(message));
+}
 
 interface ARScreenProps {
   profile: PetProfile;
@@ -65,17 +75,23 @@ export const ARScreen: React.FC<ARScreenProps> = ({ profile, onOpenUpload, onOpe
   const toggleCameraFacing = () => {
     const nextFacing = cameraFacing === 'back' ? 'front' : 'back';
     setCameraFacing(nextFacing);
-    startCamera(nextFacing);
+    if (isNativeEmbed) postToNative({ type: 'flipCamera' });
+    else startCamera(nextFacing);
   };
 
   useEffect(() => {
-    // 1. Kamera Akışını Başlat
-    startCamera('back');
+    // 1. Kamera Akışını Başlat (native gömülüyse kamera zaten native tarafta)
+    if (!isNativeEmbed) startCamera('back');
 
     // 2. Three.js AR Motorunu Başlat
     if (canvasRef.current && !engineRef.current) {
-      engineRef.current = new PetCompanionEngine(canvasRef.current, profile);
-      engineRef.current.start();
+      const engine = new PetCompanionEngine(canvasRef.current, profile);
+      engine.onPetted = () => {
+        if (isNativeEmbed) postToNative({ type: 'haptic' });
+        else navigator.vibrate?.([25, 60, 25, 60, 25]);
+      };
+      engine.start();
+      engineRef.current = engine;
     }
 
     return () => {
@@ -84,7 +100,7 @@ export const ARScreen: React.FC<ARScreenProps> = ({ profile, onOpenUpload, onOpe
         s.getTracks().forEach((track) => track.stop());
       }
       if (engineRef.current) {
-        engineRef.current.stop();
+        engineRef.current.dispose();
         engineRef.current = null;
       }
     };
@@ -115,8 +131,10 @@ export const ARScreen: React.FC<ARScreenProps> = ({ profile, onOpenUpload, onOpe
   const handleSendSpeech = async () => {
     if (!userSpeech.trim()) return;
     setIsReplying(true);
-    const reply = await generatePetMessage(profile.name, userSpeech);
+    const text = userSpeech.trim();
+    const reply = await generatePetMessage(profile.name, text, profile.personality);
     setPetReply(reply);
+    addMemory({ id: 'mem_' + Date.now(), petId: profile.id, userText: text, petReply: reply, createdAt: Date.now() });
     setIsReplying(false);
     setUserSpeech('');
   };
@@ -234,6 +252,11 @@ export const ARScreen: React.FC<ARScreenProps> = ({ profile, onOpenUpload, onOpe
           <Text style={styles.btnIcon}>📸</Text>
           <Text style={styles.btnLabel} numberOfLines={1}>Yeni Hayvan</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity style={styles.glassButton} onPress={onOpenMemorial}>
+          <Text style={styles.btnIcon}>📖</Text>
+          <Text style={styles.btnLabel} numberOfLines={1}>Anılar</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Konuşma / Ruhani Bağ Modalı */}
@@ -286,7 +309,7 @@ const styles = StyleSheet.create({
   },
   topBar: {
     position: 'absolute',
-    top: Platform.OS === 'web' ? 12 : 44,
+    top: isNativeEmbed ? 50 : Platform.OS === 'web' ? 12 : 44,
     left: 10,
     right: 10,
     zIndex: 20,
@@ -329,7 +352,7 @@ const styles = StyleSheet.create({
   },
   sizeBar: {
     position: 'absolute',
-    top: Platform.OS === 'web' ? 62 : 98,
+    top: isNativeEmbed ? 100 : Platform.OS === 'web' ? 62 : 98,
     alignSelf: 'center',
     zIndex: 20,
     flexDirection: 'row',
@@ -368,7 +391,7 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     position: 'absolute',
-    bottom: Platform.OS === 'web' ? 16 : 30,
+    bottom: isNativeEmbed ? 30 : Platform.OS === 'web' ? 16 : 30,
     left: 10,
     right: 10,
     zIndex: 20,
