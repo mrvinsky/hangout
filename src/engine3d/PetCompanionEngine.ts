@@ -309,8 +309,8 @@ export class PetCompanionEngine {
           if ((child as THREE.Mesh).isMesh) {
             const m = child as THREE.Mesh;
             m.castShadow = true;
-            if (m.material) {
-              const mat = m.material as THREE.MeshStandardMaterial;
+            const mat = m.material as any;
+            if (mat && mat.isMeshStandardMaterial) {
               mat.roughness = 0.65;
               mat.metalness = 0.08;
               mat.side = THREE.DoubleSide;
@@ -413,8 +413,8 @@ export class PetCompanionEngine {
     if (this.catScene) {
       this.catScene.traverse((child) => {
         if ((child as THREE.Mesh).isMesh) {
-          const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
-          if (mat) {
+          const mat = (child as THREE.Mesh).material as any;
+          if (mat && mat.isMeshStandardMaterial) {
             mat.emissive = mode === 'patronus' ? new THREE.Color(0xddeeff) : new THREE.Color(0x000000);
             mat.emissiveIntensity = mode === 'patronus' ? 0.38 : 0.0;
           }
@@ -445,8 +445,8 @@ export class PetCompanionEngine {
       this.catScene.traverse((child) => {
         if ((child as THREE.Mesh).isMesh) {
           const m = child as THREE.Mesh;
-          if (m.material) {
-            const mat = m.material as THREE.MeshStandardMaterial;
+          const mat = m.material as any;
+          if (mat && mat.isMeshStandardMaterial) {
             if (newProfile.furColorHex) {
               mat.color = new THREE.Color(newProfile.furColorHex);
             }
