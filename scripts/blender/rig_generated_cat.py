@@ -21,8 +21,8 @@ argv = sys.argv[sys.argv.index("--") + 1:]
 in_path, out_path = argv[0], argv[1]
 root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 TEMPLATE = os.path.join(root, "public/models/cat/source/Cat.glb")
-VOX = 160            # ızgara çözünürlüğü (uzun eksen)
-OPEN_RADIUS = 3      # bu kalınlıktan (voxel) ince yapılar silinir
+VOX = 256            # ızgara çözünürlüğü (uzun eksen)
+OPEN_RADIUS = 4      # bu kalınlıktan (voxel) ince yapılar silinir
 TARGET_FACES = 25000
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -214,14 +214,66 @@ activate(mesh)
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 print("FIT scale", k)
 
+# Üretilen kuyruk dumanla bozulup arka bacağa sarılıyor: arka patilerin gerisini kes,
+# kuyruğu iskeletin kuyruk kemikleri boyunca temiz bir tüp olarak yeniden oluştur
+co = np.array([v.co for v in mesh.data.vertices])
+h = co[:, 2].max() - co[:, 2].min()
+upper = co[co[:, 2] > co[:, 2].min() + 0.55 * h]
+y_cut = np.percentile(upper[:, 1], 98)          # sağrının arkası
+bm = bmesh.new(); bm.from_mesh(mesh.data)
+geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+res = bmesh.ops.bisect_plane(bm, geom=geom, plane_co=(0, y_cut, 0), plane_no=(0, 1, 0), clear_outer=True)
+cut_edges = [e for e in res["geom_cut"] if isinstance(e, bmesh.types.BMEdge)]
+bmesh.ops.holes_fill(bm, edges=cut_edges, sides=0)   # remesh için kapalı yüzey gerekli
+bm.to_mesh(mesh.data); bm.free()
+co = np.array([v.co for v in mesh.data.vertices])
+near = co[np.abs(co[:, 1] - y_cut) < 0.03]
+tail_base = Vector((0.003, y_cut - 0.015, near[:, 2].max() - 0.035))
+print("TAIL cut y", round(float(y_cut), 3), "base", tuple(round(v, 3) for v in tail_base))
+
+activate(arm)
+bpy.ops.object.mode_set(mode="EDIT")
+eb = arm.data.edit_bones
+shift = tail_base - eb["Tail_1"].head
+for name in ("Tail_1", "Tail_2", "Tail_3"):
+    eb[name].head += shift
+    eb[name].tail += shift
+bpy.ops.object.mode_set(mode="OBJECT")
+bones = {b.name: (arm.matrix_world @ b.head_local, arm.matrix_world @ b.tail_local) for b in arm.data.bones}
+
+curve = bpy.data.curves.new("Tail", "CURVE")
+curve.dimensions = "3D"
+spline = curve.splines.new("NURBS")   # kemik köşelerinde kırılmasın, yumuşak kavis
+pts = [bones["Tail_1"][0] + (bones["Tail_1"][0] - bones["Tail_1"][1]).normalized() * 0.03,
+       bones["Tail_1"][0], bones["Tail_2"][0], bones["Tail_3"][0], bones["Tail_3"][1]]
+spline.points.add(len(pts) - 1)
+for i, (p, c) in enumerate(zip(spline.points, pts)):
+    p.co = (c.x, c.y, c.z, 1)
+    p.radius = 1.0 - 0.45 * i / (len(pts) - 1)    # uca doğru incelir
+spline.order_u = 3
+spline.use_endpoint_u = True
+curve.resolution_u = 8
+curve.bevel_depth = 0.034
+curve.bevel_resolution = 4
+curve.use_fill_caps = True
+tail = bpy.data.objects.new("Tail", curve)
+bpy.context.scene.collection.objects.link(tail)
+activate(tail)
+bpy.ops.object.convert(target="MESH")
+activate(mesh)
+tail.select_set(True)
+bpy.ops.object.join()
+mesh = bpy.context.view_layer.objects.active
+mesh.name = "GeneratedCat"
+
 # --- 4. Remesh + sadeleştir ---
 rm = mesh.modifiers.new("Remesh", "REMESH")
 rm.mode = "VOXEL"
-rm.voxel_size = 0.005
+rm.voxel_size = 0.0035
 bpy.ops.object.modifier_apply(modifier="Remesh")
 sm = mesh.modifiers.new("Smooth", "LAPLACIANSMOOTH")
-sm.iterations = 12
-sm.lambda_factor = 0.8
+sm.iterations = 6
+sm.lambda_factor = 0.5
 bpy.ops.object.modifier_apply(modifier="Smooth")
 dec = mesh.modifiers.new("Decimate", "DECIMATE")
 dec.ratio = min(1.0, TARGET_FACES / max(len(mesh.data.polygons), 1))
