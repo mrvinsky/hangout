@@ -990,7 +990,7 @@
         this.y = y;
         this.angle = angle;
         this.alpha = 0.95;
-        this.scale = 1;
+        this.scale = 0.72;
       }
       update() {
         this.alpha -= 0.012; // ~4 saniye boyunca yerde kalsın
@@ -1148,9 +1148,9 @@
 
         // Kedi yürüdükçe arkasında parlayan ayak izleri bırakır
         if (this.stepCounter % 16 === 0) {
-          const footOffset = (this.stepCounter % 32 === 0) ? -28 : 28;
+          const footOffset = (this.stepCounter % 32 === 0) ? -18 : 18;
           const footX = this.x + (footOffset * this.facing);
-          const footY = this.y + 48;
+          const footY = this.y + 32;
           lightTrails.push(new LightFootprint(footX, footY, (dx >= 0 ? 0.2 : -0.2)));
           for (let p = 0; p < 2; p++) {
             particles.push(new Particle(footX, footY, "#ffffff"));
@@ -1395,7 +1395,7 @@
         const bob = Math.sin(this.walkCycle * 4) * 6;
         const catX = this.x;
         const catY = this.y + bob;
-        const scale = 2.2; // Görkemli, net ve iri boyut
+        const scale = 1.35; // Dengeli, odaya tam oturan sevimli boyut
 
         targetCtx.save();
         targetCtx.translate(catX, catY);
@@ -1403,14 +1403,14 @@
         targetCtx.scale(this.facing * scale, scale);
 
         // 1. Odayı Aydınlatan Gümüşi Beyaz Işık Halesi (Sıfır Mavi/Camgöbeği!)
-        const auraGrad = targetCtx.createRadialGradient(0, 0, 15, 0, 0, 160);
-        auraGrad.addColorStop(0, "rgba(255, 255, 255, 0.45)");
-        auraGrad.addColorStop(0.35, "rgba(230, 230, 230, 0.22)");
-        auraGrad.addColorStop(0.7, "rgba(190, 190, 190, 0.08)");
+        const auraGrad = targetCtx.createRadialGradient(0, 0, 10, 0, 0, 110);
+        auraGrad.addColorStop(0, "rgba(255, 255, 255, 0.40)");
+        auraGrad.addColorStop(0.35, "rgba(230, 230, 230, 0.20)");
+        auraGrad.addColorStop(0.7, "rgba(190, 190, 190, 0.06)");
         auraGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
         targetCtx.fillStyle = auraGrad;
         targetCtx.beginPath();
-        targetCtx.arc(0, 0, 160, 0, Math.PI * 2);
+        targetCtx.arc(0, 0, 110, 0, Math.PI * 2);
         targetCtx.fill();
 
         // 2. KEDİNİN İÇİNİ DOLU GÖSTEREN ZEMİN SİLÜETİ (Hacimli kürk tabanı)
