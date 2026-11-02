@@ -1167,72 +1167,92 @@
         }
       }
 
-      // 4,400+ ULTRA YOĞUN ANATOMİK PARÇACIK MODELİ
+      // 8,800+ ULTRA YOĞUN YAPISAL PARÇACIK MODELİ (Kuyruk Yoğunluğu Tüm Bedene Uygulandı)
       generatePatronusParticles() {
         const pts = [];
 
-        // 1. British Shorthair Tombul Gövde (1,800 parçacık - Sıkı, dolgun kürk)
-        for (let i = 0; i < 1800; i++) {
-          const a = Math.random() * Math.PI * 2;
-          const r = Math.sqrt(Math.random());
-          const lx = Math.cos(a) * 52 * r;
-          const ly = Math.sin(a) * 34 * r + 7;
-          let col = "#5b6875"; // Ana British Blue duman grisi
-          if (r > 0.88) col = "#a2d2ff"; // Patronus gümüş-mavi dış aura
-          else if (ly < -8) col = "#8a9aa9"; // Sırt üst ışığı
-          else if (ly > 22) col = "#424c55"; // Göbek altı derin gölge
-          else if (lx > 15) col = "#9cb0c0"; // Göğüs yelesi
-          pts.push({ type: "body", lx, ly, size: 1.4, color: col, phase: Math.random() * 10 });
+        // 1. TÜM GÖVDE: Konsantrik Eliptik Dilimler ve Yüzey/Hacim Örgüsü (~3,200 parçacık)
+        // Kuyruktaki yapısal ızgara yoğunluğunun aynısı gövdeye uygulandı!
+        for (let s = -30; s <= 32; s += 1.8) {
+          const yNorm = (s - 6) / 33;
+          if (Math.abs(yNorm) >= 1) continue;
+          const xRadius = 52 * Math.sqrt(1 - yNorm * yNorm);
+          const yVal = s;
+          const numPoints = Math.max(14, Math.floor(xRadius * 1.6));
+
+          for (let shell = 0.5; shell <= 1.0; shell += 0.25) {
+            for (let i = 0; i < numPoints; i++) {
+              const a = (i / numPoints) * Math.PI * 2;
+              const lx = Math.cos(a) * xRadius * shell;
+              const ly = yVal + Math.sin(a) * 4 * (1 - shell);
+
+              let col = "#5b6875"; // Ana British Blue duman grisi
+              if (shell >= 0.98) col = "#a2d2ff"; // Patronus gümüş-mavi dış aura
+              else if (ly < -8) col = "#8a9aa9"; // Sırt üst ışığı
+              else if (ly > 22) col = "#424c55"; // Göbek altı derin gölge
+              else if (lx > 15) col = "#9cb0c0"; // Göğüs yelesi
+
+              pts.push({ type: "body", lx, ly, size: 1.4, color: col, phase: Math.random() * 10 });
+            }
+          }
         }
 
-        // 2. Meşhur Yuvarlak Kafa (900 parçacık)
-        for (let i = 0; i < 900; i++) {
-          const a = Math.random() * Math.PI * 2;
-          const r = Math.sqrt(Math.random());
-          const lx = 34 + Math.cos(a) * 28 * r;
-          const ly = -18 + Math.sin(a) * 28 * r;
-          let col = "#657380";
-          if (r > 0.88) col = "#bae6fd";
-          else if (ly < -30) col = "#99abbb";
-          else if (ly > -5) col = "#465059";
-          pts.push({ type: "head", lx, ly, size: 1.4, color: col, phase: Math.random() * 10 });
+        // 2. YUVARLAK KAFA: Konsantrik Küresel Katmanlar (~1,800 parçacık)
+        const headCenterX = 34, headCenterY = -18, headR = 28;
+        for (let r = 8; r <= headR; r += 3.5) {
+          const isOuter = r >= headR - 1.2;
+          const num = Math.floor(r * 4.0);
+          for (let i = 0; i < num; i++) {
+            const a = (i / num) * Math.PI * 2;
+            const lx = headCenterX + Math.cos(a) * r;
+            const ly = headCenterY + Math.sin(a) * r;
+
+            let col = "#657380";
+            if (isOuter) col = "#bae6fd";
+            else if (ly < -30) col = "#99abbb";
+            else if (ly > -5) col = "#465059";
+
+            pts.push({ type: "head", lx, ly, size: 1.4, color: col, phase: Math.random() * 10 });
+          }
         }
 
-        // 3. Pofuduk Yuvarlak Yanaklar (Ozzy'nin Meşhur Yanakları - 500 parçacık)
-        for (let i = 0; i < 250; i++) {
-          const a = Math.random() * Math.PI * 2;
-          const r = Math.sqrt(Math.random()) * 15;
-          pts.push({ type: "cheek", lx: 48 + Math.cos(a) * r, ly: -10 + Math.sin(a) * r, size: 1.5, color: "#8a9aa8", phase: Math.random() * 10 });
-        }
-        for (let i = 0; i < 250; i++) {
-          const a = Math.random() * Math.PI * 2;
-          const r = Math.sqrt(Math.random()) * 14;
-          pts.push({ type: "cheek", lx: 22 + Math.cos(a) * r, ly: -10 + Math.sin(a) * r, size: 1.5, color: "#8a9aa8", phase: Math.random() * 10 });
-        }
+        // 3. POFUDUK YANAKLAR: Yoğun Küresel Yanak Örgüsü (~800 parçacık)
+        const cheeks = [{ cx: 48, cy: -10, rMax: 15 }, { cx: 22, cy: -10, rMax: 14 }];
+        cheeks.forEach(chk => {
+          for (let r = 3; r <= chk.rMax; r += 2.5) {
+            const num = Math.floor(r * 4.4);
+            for (let i = 0; i < num; i++) {
+              const a = (i / num) * Math.PI * 2;
+              pts.push({
+                type: "cheek",
+                lx: chk.cx + Math.cos(a) * r,
+                ly: chk.cy + Math.sin(a) * r,
+                size: 1.5,
+                color: r > chk.rMax - 2 ? "#a2d2ff" : "#8a9aa8",
+                phase: Math.random() * 10
+              });
+            }
+          }
+        });
 
-        // 4. Yuvarlak Uçlu Kulaklar (240 parçacık)
-        for (let i = 0; i < 120; i++) {
-          const t = Math.random();
+        // 4. KULAKLAR: Yapısal Üçgen Örgü (~360 parçacık)
+        for (let row = 0; row < 14; row++) {
+          const t = row / 14;
           const w = (1 - t) * 14;
-          const lx = 18 + (Math.random() - 0.5) * w;
-          const ly = -34 - t * 20;
-          pts.push({ type: "ear", lx, ly, size: 1.4, color: t < 0.7 ? "#be9aa8" : "#4a555f", phase: Math.random() * 10 });
-        }
-        for (let i = 0; i < 120; i++) {
-          const t = Math.random();
-          const w = (1 - t) * 14;
-          const lx = 44 + (Math.random() - 0.5) * w;
-          const ly = -34 - t * 20;
-          pts.push({ type: "ear", lx, ly, size: 1.4, color: t < 0.7 ? "#be9aa8" : "#4a555f", phase: Math.random() * 10 });
+          for (let col = -w / 2; col <= w / 2; col += 2.2) {
+            pts.push({ type: "ear", lx: 18 + col, ly: -34 - t * 20, size: 1.4, color: t < 0.7 ? "#be9aa8" : "#4a555f", phase: Math.random() * 10 });
+            pts.push({ type: "ear", lx: 44 + col, ly: -34 - t * 20, size: 1.4, color: t < 0.7 ? "#be9aa8" : "#4a555f", phase: Math.random() * 10 });
+          }
         }
 
-        // 5. Sevimli Pembe-Gül Burun (40 parçacık)
-        for (let i = 0; i < 40; i++) {
-          const t = Math.random();
-          pts.push({ type: "nose", lx: 43 + (Math.random() - 0.5) * 6 * (1 - t), ly: -13 + t * 4, size: 1.5, color: "#d98596", phase: Math.random() * 10 });
+        // 5. SEVİMLİ PEMBE BURUN & BIYIKLAR (~160 parçacık)
+        for (let row = 0; row < 8; row++) {
+          const t = row / 8;
+          const w = (1 - t) * 6;
+          for (let c = -w / 2; c <= w / 2; c += 1.8) {
+            pts.push({ type: "nose", lx: 43 + c, ly: -13 + t * 4, size: 1.5, color: "#d98596", phase: Math.random() * 10 });
+          }
         }
-
-        // 6. Gümüşi Beyaz Bıyıklar (72 parçacık)
         const whiskerOffsets = [
           { startX: 49, startY: -11, endX: 78, endY: -16 },
           { startX: 49, startY: -9, endX: 80, endY: -8 },
@@ -1242,29 +1262,29 @@
           { startX: 23, startY: -7, endX: -4, endY: 1 }
         ];
         whiskerOffsets.forEach(w => {
-          for (let s = 0; s < 12; s++) {
-            const f = s / 11;
+          for (let s = 0; s < 14; s++) {
+            const f = s / 13;
             pts.push({ type: "whisker", lx: w.startX + (w.endX - w.startX) * f, ly: w.startY + (w.endY - w.startY) * f, size: 1.3, color: "#ffffff", phase: Math.random() * 10 });
           }
         });
 
-        // 7. BÜYÜLEYİCİ KEHRİBAR / ALTIN GÖZLER (Ozzy Gözleri - 80 parçacık)
+        // 6. KEHRİBAR / ALTIN GÖZLER (~160 parçacık)
         const eyeCenters = [{ x: 27, y: -21 }, { x: 45, y: -21 }];
         eyeCenters.forEach(ec => {
-          for (let i = 0; i < 30; i++) {
-            const a = Math.random() * Math.PI * 2;
-            const r = Math.sqrt(Math.random()) * 6.8;
-            pts.push({ type: "eye", lx: ec.x + Math.cos(a) * r, ly: ec.y + Math.sin(a) * r, size: 1.8, color: r < 3.5 ? "#ffd166" : "#ffb703", phase: 0 });
+          for (let r = 2; r <= 6.8; r += 2.0) {
+            const num = Math.floor(r * 5.0);
+            for (let i = 0; i < num; i++) {
+              const a = (i / num) * Math.PI * 2;
+              pts.push({ type: "eye", lx: ec.x + Math.cos(a) * r, ly: ec.y + Math.sin(a) * r, size: 1.8, color: r < 4.0 ? "#ffd166" : "#ffb703", phase: 0 });
+            }
           }
-          // Dikey Siyah Göz Bebeği
           for (let i = -4; i <= 4; i++) {
             pts.push({ type: "pupil", lx: ec.x, ly: ec.y + i * 1.4, size: 1.8, color: "#050505", phase: 0 });
           }
-          // Canlılık Parıltısı
           pts.push({ type: "glint", lx: ec.x - 2, ly: ec.y - 2, size: 2.2, color: "#ffffff", phase: 0 });
         });
 
-        // 8. Dört Bacak ve Patiler (480 parçacık)
+        // 7. DÖRT BACAK VE PATİLER: Silindirik Bacak Boruları (~1,400 parçacık)
         const legs = [
           { id: "bl", hipX: -26, hipY: 18, isBack: true, phaseOffset: 0 },
           { id: "br", hipX: 20, hipY: 18, isBack: true, phaseOffset: Math.PI },
@@ -1272,16 +1292,18 @@
           { id: "fr", hipX: 32, hipY: 22, isBack: false, phaseOffset: 0 }
         ];
         legs.forEach(leg => {
-          for (let row = 0; row < 18; row++) {
-            const seg = row / 18;
-            for (let col = -2; col <= 2; col++) {
+          for (let slice = 0; slice < 20; slice++) {
+            const seg = slice / 20;
+            const legR = 6.2 * (1 - seg * 0.18); // Bileğe doğru hafif incelir
+            for (let p = 0; p < 14; p++) {
+              const a = (p / 14) * Math.PI * 2;
               pts.push({
                 type: "leg",
                 legId: leg.id,
                 hipX: leg.hipX,
                 hipY: leg.hipY,
                 seg,
-                colOffset: col * 2,
+                colOffset: Math.cos(a) * legR,
                 len: 26,
                 phaseOffset: leg.phaseOffset,
                 size: 1.4,
@@ -1290,16 +1312,17 @@
               });
             }
           }
-          for (let p = 0; p < 30; p++) {
-            const a = (p / 30) * Math.PI * 2;
+          // Yuvarlak Pofuduk Patiler
+          for (let p = 0; p < 36; p++) {
+            const a = (p / 36) * Math.PI * 2;
             pts.push({
               type: "paw",
               legId: leg.id,
               hipX: leg.hipX,
               hipY: leg.hipY,
               phaseOffset: leg.phaseOffset,
-              pawOffsetX: Math.cos(a) * 6,
-              pawOffsetY: Math.sin(a) * 4,
+              pawOffsetX: Math.cos(a) * 6.5,
+              pawOffsetY: Math.sin(a) * 4.2,
               size: 1.8,
               color: "#00f5d4",
               phase: Math.random() * 10
@@ -1307,19 +1330,22 @@
           }
         });
 
-        // 9. British Shorthair Silindirik Kalın Kuyruk (Cylindrical Plush Tail - 560 parçacık)
+        // 8. KUYRUK: TABANDAN UCA DOĞRU ZARİFÇE İNCELEN SİLİNDİR (Soba Borusu Değil! - 650 parçacık)
         const tailLength = 54;
-        const tailRadius = 9.2; // Tam etli, sabit silindir kalınlığı (British Shorthair standardı)
-        const numSlices = 36;
-        const radialPts = 14;
+        const rBase = 11.2; // Kalçada kalın, etli taban
+        const rTip = 6.2;   // Uçta doğal incelen zarif kürk
+        const numTailSlices = 38;
+        const radialTailPts = 16;
 
-        for (let s = 0; s < numSlices; s++) {
-          const t = s / numSlices;
+        for (let s = 0; s < numTailSlices; s++) {
+          const t = s / numTailSlices;
           const dist = t * tailLength;
-          for (let r = 0; r < radialPts; r++) {
-            const angle = (r / radialPts) * Math.PI * 2;
+          const curR = rBase * (1.0 - t * 0.45); // Uca doğru %45 incelir!
+
+          for (let r = 0; r < radialTailPts; r++) {
+            const angle = (r / radialTailPts) * Math.PI * 2;
             const normOffset = Math.cos(angle);
-            let col = "#57636f"; // Ana duman grisi kürk
+            let col = "#57636f"; // Ana kürk
             if (normOffset < -0.6) col = "#8a9aa9"; // Üst ışık
             else if (normOffset > 0.6) col = "#424c55"; // Alt gölge
             else if (Math.abs(normOffset) > 0.85) col = "#a2d2ff"; // Rim ışığı
@@ -1327,7 +1353,7 @@
             pts.push({
               type: "tail_cyl",
               dist,
-              rOffset: normOffset * tailRadius,
+              rOffset: normOffset * curR,
               size: 1.5,
               color: col,
               phase: Math.random() * 10
@@ -1335,11 +1361,11 @@
           }
         }
 
-        // Silindirin Ucu: Yuvarlak kubbe kapak (Dome tip - 60 parçacık)
-        for (let i = 0; i < 60; i++) {
+        // İncelen Silindirin Yuvarlak Kubbe Ucu (70 parçacık)
+        for (let i = 0; i < 70; i++) {
           const a = Math.random() * Math.PI * 2;
-          const r = Math.sqrt(Math.random()) * tailRadius;
-          const capDist = tailLength + Math.sqrt(Math.max(0, tailRadius * tailRadius - r * r)) * 0.7;
+          const r = Math.sqrt(Math.random()) * rTip;
+          const capDist = tailLength + Math.sqrt(Math.max(0, rTip * rTip - r * r)) * 0.7;
           pts.push({
             type: "tail_cyl",
             dist: capDist,
@@ -1350,13 +1376,13 @@
           });
         }
 
-        // 10. Kutsal Lord Boban Altın Halesi (120 parçacık)
-        for (let i = 0; i < 70; i++) {
-          const a = (i / 70) * Math.PI * 2;
+        // 9. KUTSAL LORD BOBAN ALTIN HALESİ (~160 parçacık)
+        for (let i = 0; i < 90; i++) {
+          const a = (i / 90) * Math.PI * 2;
           pts.push({ type: "halo", angle: a, rX: 26, rY: 8, size: 2.0, color: "#ffd166", phase: Math.random() * 10 });
         }
-        for (let i = 0; i < 50; i++) {
-          const a = (i / 50) * Math.PI * 2;
+        for (let i = 0; i < 70; i++) {
+          const a = (i / 70) * Math.PI * 2;
           pts.push({ type: "halo_inner", angle: a, rX: 21, rY: 6, size: 1.6, color: "#ffb703", phase: Math.random() * 10 });
         }
 
@@ -1369,7 +1395,7 @@
         const bob = Math.sin(this.walkCycle * 4) * 6;
         const catX = this.x;
         const catY = this.y + bob;
-        const scale = 2.2; // Görkemli, net ve iri boyut (Önceki gibi minik böcek gibi değil!)
+        const scale = 2.2; // Görkemli, net ve iri boyut
 
         targetCtx.save();
         targetCtx.translate(catX, catY);
@@ -1388,7 +1414,6 @@
         targetCtx.fill();
 
         // 2. KEDİNİN İÇİNİ DOLU GÖSTEREN ZEMİN SİLÜETİ (Hacimli kürk tabanı)
-        // Bu sayede kedi delikli/şeffaf durmaz, katı ve canlı bir kedi formu kazanır!
         targetCtx.save();
         targetCtx.fillStyle = "rgba(85, 98, 111, 0.75)";
         targetCtx.shadowBlur = 15;
@@ -1416,34 +1441,37 @@
         targetCtx.beginPath();
         targetCtx.moveTo(37, -26); targetCtx.lineTo(44, -54); targetCtx.lineTo(51, -26); targetCtx.closePath(); targetCtx.fill();
 
-        // Silindirik Kalın Kuyruk Tabanı (Etli, pofuduk, tek parça silindir gövde)
+        // DOĞAL İNCELEN SİLİNDİRİK KUYRUK TABANI (Soba Borusu Değil, Tabanda 11px -> Uçta 6.2px Zarif İncelme!)
         const tailBaseX = -45, tailBaseY = 6;
         const tailSway = Math.sin(this.walkCycle * 2.2) * 0.14;
         const tipTheta = (Math.PI * 0.86) + tailSway - 0.38;
         const tipX = tailBaseX + Math.cos(tipTheta) * 54;
         const tipY = tailBaseY - Math.sin(tipTheta) * 54;
 
-        targetCtx.strokeStyle = "rgba(85, 98, 111, 0.85)";
-        targetCtx.lineWidth = 19; // Tam 19px kalınlığında etli silindir!
-        targetCtx.lineCap = "round";
+        const baseNormAngle = (Math.PI * 0.86) + tailSway + Math.PI / 2;
+        const tipNormAngle = tipTheta + Math.PI / 2;
+        const nbX = Math.cos(baseNormAngle) * 11.2;
+        const nbY = -Math.sin(baseNormAngle) * 11.2;
+        const ntX = Math.cos(tipNormAngle) * 6.2;
+        const ntY = -Math.sin(tipNormAngle) * 6.2;
+
         targetCtx.beginPath();
-        targetCtx.moveTo(tailBaseX, tailBaseY);
-        targetCtx.quadraticCurveTo(
-          tailBaseX - 30, tailBaseY - 8 + tailSway * 18,
-          tipX, tipY
-        );
-        targetCtx.stroke();
+        targetCtx.moveTo(tailBaseX + nbX, tailBaseY + nbY);
+        targetCtx.quadraticCurveTo(tailBaseX - 28 + nbX * 0.7, tailBaseY - 8 + tailSway * 18, tipX + ntX, tipY + ntY);
+        targetCtx.arc(tipX, tipY, 6.2, -tipNormAngle, -tipNormAngle + Math.PI);
+        targetCtx.quadraticCurveTo(tailBaseX - 28 - nbX * 0.7, tailBaseY - 8 + tailSway * 18, tailBaseX - nbX, tailBaseY - nbY);
+        targetCtx.closePath();
+        targetCtx.fill();
         targetCtx.restore();
 
-        // 3. 4,400+ ULTRA YOĞUN IŞIK PARÇACIĞINI HESAPLA VE ÇİZ
-        const tailWag = Math.sin(this.walkCycle * 2.5) * 0.35;
+        // 3. 8,800+ ULTRA YOĞUN IŞIK PARÇACIĞINI HESAPLA VE ÇİZ
         const haloOrbit = this.time * 1.8;
 
         for (let i = 0; i < this.particles.length; i++) {
           const p = this.particles[i];
           let lx = 0, ly = 0;
 
-          // Hassas, mikro titreşim (0.8px - Netliği bozmaz)
+          // Mikro titreşim (0.8px)
           const jitterX = Math.sin(this.time * 6 + p.phase) * 0.8;
           const jitterY = Math.cos(this.time * 5 + p.phase) * 0.8;
 
@@ -1464,14 +1492,10 @@
             lx = p.hipX + p.pawOffsetX + Math.sin(swing) * 27 + jitterX * 0.3;
             ly = p.hipY + p.pawOffsetY + Math.cos(swing) * 27 + jitterY * 0.3;
           } else if (p.type === "tail_cyl") {
-            const tailBaseX = -45, tailBaseY = 6;
-            const tailSway = Math.sin(this.walkCycle * 2.2) * 0.14;
             const t = p.dist / 54;
-            // Akıcı, doğal silindirik eksen eğrisi
             const theta = (Math.PI * 0.86) + tailSway - t * 0.38;
             const cx = tailBaseX + Math.cos(theta) * p.dist;
             const cy = tailBaseY - Math.sin(theta) * p.dist;
-            // Silindire dik normal doğrultusunda kalınlık
             lx = cx - Math.sin(theta) * p.rOffset + jitterX * 0.4;
             ly = cy - Math.cos(theta) * p.rOffset + jitterY * 0.4;
           } else if (p.type === "halo" || p.type === "halo_inner") {
@@ -1480,7 +1504,6 @@
             ly = -62 + Math.sin(a) * p.rY + jitterY * 0.2;
           }
 
-          // Parçacığı Doğrudan Net Çiz
           targetCtx.fillStyle = p.color;
           targetCtx.beginPath();
           targetCtx.arc(lx, ly, p.size, 0, Math.PI * 2);
