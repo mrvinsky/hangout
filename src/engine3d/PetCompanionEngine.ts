@@ -281,7 +281,7 @@ export class PetCompanionEngine {
 
   private loadModel() {
     const loader = new GLTFLoader();
-    const modelPath = 'assets/models/cat/source/Cat.glb';
+    const modelPath = '/models/cat/source/Cat.glb';
 
     loader.load(
       modelPath,
