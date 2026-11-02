@@ -648,39 +648,68 @@
     swarmPoints.visible = false;
     scene.add(swarmPoints);
 
-    // --- KEDİNİN ETRAFINDA SÜZÜLEN KUTSAL IŞIK ZERRELERİ (AMBIENT SHIMMER) ---
-    const AMBIENT_SHIMMER_COUNT = 140;
-    const shimmerGeo = new THREE.BufferGeometry();
-    const shimmerPos = new Float32Array(AMBIENT_SHIMMER_COUNT * 3);
-    const shimmerCol = new Float32Array(AMBIENT_SHIMMER_COUNT * 3);
+    // --- TAM GÖVDESİNDEN ÇIKAN VE YAVAŞÇA YÜKSELEN KUTSAL PARÇACIKLAR (SURFACE EMISSION) ---
+    const SURFACE_PARTICLE_COUNT = 240;
+    const surfaceGeo = new THREE.BufferGeometry();
+    const surfacePositions = new Float32Array(SURFACE_PARTICLE_COUNT * 3);
+    const surfaceColors = new Float32Array(SURFACE_PARTICLE_COUNT * 3);
 
-    const shimmerParticles = [];
-    for (let i = 0; i < AMBIENT_SHIMMER_COUNT; i++) {
-      shimmerParticles.push({
-        theta: Math.random() * Math.PI * 2,
-        r: 8 + Math.random() * 18,
-        y: (Math.random() - 0.5) * 16,
-        speed: 0.02 + Math.random() * 0.03
+    const surfaceParticleList = [];
+    for (let i = 0; i < SURFACE_PARTICLE_COUNT; i++) {
+      surfacePositions[i * 3 + 1] = -9999; // Başlangıçta gizli
+      surfaceParticleList.push({
+        active: false,
+        x: 0, y: -9999, z: 0,
+        vx: 0, vy: 0, vz: 0,
+        age: 0,
+        life: 2.5 + Math.random() * 1.5,
+        phase: Math.random() * 10
       });
-      shimmerCol[i * 3] = 0.95;
-      shimmerCol[i * 3 + 1] = 0.98;
-      shimmerCol[i * 3 + 2] = 1.0;
+      surfaceColors[i * 3] = 0.92;
+      surfaceColors[i * 3 + 1] = 0.96;
+      surfaceColors[i * 3 + 2] = 1.0;
     }
-    shimmerGeo.setAttribute("position", new THREE.BufferAttribute(shimmerPos, 3));
-    shimmerGeo.setAttribute("color", new THREE.BufferAttribute(shimmerCol, 3));
 
-    const shimmerMat = new THREE.PointsMaterial({
-      size: 3.5,
+    surfaceGeo.setAttribute("position", new THREE.BufferAttribute(surfacePositions, 3));
+    surfaceGeo.setAttribute("color", new THREE.BufferAttribute(surfaceColors, 3));
+
+    const surfaceMat = new THREE.PointsMaterial({
+      size: 3.6,
       vertexColors: true,
       transparent: true,
-      opacity: 0.75,
+      opacity: 0.85,
       map: glowTex,
       blending: THREE.AdditiveBlending,
       depthWrite: false
     });
-    const shimmerSystem = new THREE.Points(shimmerGeo, shimmerMat);
-    shimmerSystem.visible = false;
-    scene.add(shimmerSystem);
+    const surfaceSystem = new THREE.Points(surfaceGeo, surfaceMat);
+    surfaceSystem.visible = false;
+    scene.add(surfaceSystem);
+
+    function spawnSurfaceParticle(index) {
+      if (catTargetVertices.length === 0) return;
+      const p = surfaceParticleList[index];
+      // Kedinin 3D yüzeyinden rastgele bir nokta seç (tam gövde, sırt, omuz, bacak, kafa)
+      const v = catTargetVertices[Math.floor(Math.random() * catTargetVertices.length)];
+
+      // Kedinin dünya koordinatına ve yönelme açısına çevir
+      const cosR = Math.cos(catRotY);
+      const sinR = Math.sin(catRotY);
+      const wx = catPos.x + v.x * cosR + v.z * sinR;
+      const wy = catPos.y + v.y;
+      const wz = catPos.z - v.x * sinR + v.z * cosR;
+
+      p.active = true;
+      p.x = wx;
+      p.y = wy;
+      p.z = wz;
+      // Çok yavaş, ağırbaşlı ve asil yükselme hızı
+      p.vx = (Math.random() - 0.5) * 0.018;
+      p.vy = 0.045 + Math.random() * 0.035; // Çok yavaş ve süzülen buhar
+      p.vz = (Math.random() - 0.5) * 0.018;
+      p.age = 0;
+      p.life = 2.5 + Math.random() * 1.5; // Uzun, sakin ömür
+    }
 
     // --- 3D HAYALETLER (GHOSTS) ---
     class Ghost3D {
@@ -741,7 +770,7 @@
 
     let catPos = new THREE.Vector3(0, -16.0, 0);
     let catTargetPos = new THREE.Vector3(0, -16.0, 0);
-    let catSpeed = 0.35;
+    let catSpeed = 0.20;
     let catRotY = 0;
 
     function pickNewCatDestination() {
@@ -764,7 +793,7 @@
       swarmPoints.visible = true;
       if (catScene) catScene.visible = false;
       groundGroup.visible = false;
-      shimmerSystem.visible = false;
+      surfaceSystem.visible = false;
 
       ghosts.forEach(g => { g.isDying = true; g.alpha = 0; });
 
@@ -777,8 +806,8 @@
     function updateCatProceduralAnimation(time) {
       if (!catBones["Thigh_FR"]) return;
 
-      const walkSpeed = 7.5;
-      const legAmp = 0.42;
+      const walkSpeed = 4.8;
+      const legAmp = 0.34;
       const stepCycle = time * walkSpeed;
 
       const swingR = Math.sin(stepCycle);
@@ -805,9 +834,9 @@
       }
 
       // Doğal Kuyruk Dalgası
-      if (catBones["Tail_1"]) catBones["Tail_1"].rotation.y = catRestRot["Tail_1"].y + Math.sin(time * 3.5) * 0.25;
-      if (catBones["Tail_2"]) catBones["Tail_2"].rotation.y = catRestRot["Tail_2"].y + Math.sin(time * 3.5 - 0.6) * 0.35;
-      if (catBones["Tail_3"]) catBones["Tail_3"].rotation.y = catRestRot["Tail_3"].y + Math.sin(time * 3.5 - 1.2) * 0.45;
+      if (catBones["Tail_1"]) catBones["Tail_1"].rotation.y = catRestRot["Tail_1"].y + Math.sin(time * 2.2) * 0.25;
+      if (catBones["Tail_2"]) catBones["Tail_2"].rotation.y = catRestRot["Tail_2"].y + Math.sin(time * 2.2 - 0.6) * 0.35;
+      if (catBones["Tail_3"]) catBones["Tail_3"].rotation.y = catRestRot["Tail_3"].y + Math.sin(time * 2.2 - 1.2) * 0.45;
 
       // Omurga Yaylanması & Nefes
       if (catBones["Torso"]) {
@@ -822,7 +851,7 @@
       const halo = catScene.getObjectByName("royalHalo");
       if (halo) {
         halo.rotation.z += 0.035;
-        halo.position.y = 19.5 + Math.sin(time * 4) * 0.8;
+        halo.position.y = 19.5 + Math.sin(time * 2.5) * 0.8;
       }
     }
 
@@ -863,7 +892,7 @@
             vp.angle += vp.speed;
             const curR = vp.r * (0.3 + 0.7 * t);
             swarmPos[i * 3] = Math.cos(vp.angle) * curR;
-            swarmPos[i * 3 + 1] = -5 + vp.y * (1 - t * 0.3) + Math.sin(time * 4 + i) * 2;
+            swarmPos[i * 3 + 1] = -5 + vp.y * (1 - t * 0.3) + Math.sin(time * 2.5 + i) * 2;
             swarmPos[i * 3 + 2] = Math.sin(vp.angle) * curR;
           }
           swarmGeo.attributes.position.needsUpdate = true;
@@ -911,7 +940,7 @@
 
             if (catScene) catScene.visible = true;
             groundGroup.visible = true;
-            shimmerSystem.visible = true;
+            surfaceSystem.visible = true;
             swarmPoints.visible = false;
 
             pickNewCatDestination();
@@ -927,7 +956,7 @@
             patronusState = 'IDLE';
             if (catScene) catScene.visible = false;
             groundGroup.visible = false;
-            shimmerSystem.visible = false;
+            surfaceSystem.visible = false;
             document.getElementById("catBadge").style.display = "none";
             document.getElementById("statusText").innerHTML = "⚡ Ekrana dokunarak Patronus'u yeniden çağır!";
             document.getElementById("statusText").style.color = "#cbd5e1";
@@ -958,15 +987,42 @@
 
             groundGroup.position.set(catPos.x, -16.0, catPos.z);
 
-            // Kedinin etrafında tatlı tatlı süzülen gümüş parıltılar
-            for (let i = 0; i < AMBIENT_SHIMMER_COUNT; i++) {
-              const sp = shimmerParticles[i];
-              sp.theta += sp.speed;
-              shimmerPos[i * 3] = catPos.x + Math.cos(sp.theta) * sp.r;
-              shimmerPos[i * 3 + 1] = catPos.y + 10 + sp.y + Math.sin(time * 3 + i) * 2;
-              shimmerPos[i * 3 + 2] = catPos.z + Math.sin(sp.theta) * sp.r;
+            // KEDİNİN TAM GÖVDESİNDEN ÇIKAN VE YAVAŞÇA SÜZÜLEN PARÇACIKLAR
+            for (let i = 0; i < SURFACE_PARTICLE_COUNT; i++) {
+              const p = surfaceParticleList[i];
+              if (!p.active || p.age >= p.life) {
+                // Kademeli olarak her karede gövdeden yeni parçacık doğur
+                if (Math.random() < 0.12) {
+                  spawnSurfaceParticle(i);
+                }
+              }
+
+              if (p.active) {
+                p.age += 0.016;
+                const progress = p.age / p.life;
+                if (progress >= 1.0) {
+                  p.active = false;
+                  surfacePositions[i * 3 + 1] = -9999;
+                } else {
+                  // Yavaşça yukarı ve yana süzülme (curl turbulence)
+                  p.x += p.vx + Math.sin(time * 1.8 + p.phase) * 0.015;
+                  p.y += p.vy;
+                  p.z += p.vz + Math.cos(time * 1.8 + p.phase) * 0.015;
+
+                  surfacePositions[i * 3] = p.x;
+                  surfacePositions[i * 3 + 1] = p.y;
+                  surfacePositions[i * 3 + 2] = p.z;
+
+                  // Yumuşak kadife parlaklık (gövdeden doğarken parlar, yükseldikçe usulca erir)
+                  const alpha = Math.sin(progress * Math.PI) * 0.9;
+                  surfaceColors[i * 3] = alpha * 0.95;
+                  surfaceColors[i * 3 + 1] = alpha * 0.98;
+                  surfaceColors[i * 3 + 2] = alpha * 1.0;
+                }
+              }
             }
-            shimmerGeo.attributes.position.needsUpdate = true;
+            surfaceGeo.attributes.position.needsUpdate = true;
+            surfaceGeo.attributes.color.needsUpdate = true;
           }
         }
       }
