@@ -25,9 +25,11 @@ export class PetCompanionEngine {
   private catSpeed = 0.20;
   private catRotY = 0;
   private readonly catScale = 45.0;
+  private currentScaleFactor = 1.0;
 
   // Zemin & Gölge
   private groundGroup!: THREE.Group;
+  private puddleMesh!: THREE.Mesh;
 
   // Parçacık Sistemleri
   private readonly SWARM_COUNT = 24000;
@@ -35,8 +37,8 @@ export class PetCompanionEngine {
   private swarmPos!: Float32Array;
   private swarmVortex: { angle: number; r: number; y: number; speed: number }[] = [];
 
-  // Gövdeden Süzülen Yüzey Buharı (1200 Zengin Patronus Parçacığı)
-  private readonly SURFACE_COUNT = 1200;
+  // Gövdeden Süzülen Ektoplazma Aurası (Hafif ve Asil 380 Parçacık)
+  private readonly SURFACE_COUNT = 380;
   private surfacePoints!: THREE.Points;
   private surfacePos!: Float32Array;
   private surfaceColors!: Float32Array;
@@ -152,12 +154,13 @@ export class PetCompanionEngine {
     pCtx.fillRect(0, 0, 128, 128);
     const puddleTex = new THREE.CanvasTexture(pCanvas);
 
-    const puddleMesh = new THREE.Mesh(
+    this.puddleMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(42, 54),
       new THREE.MeshBasicMaterial({ map: puddleTex, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })
     );
-    puddleMesh.rotation.x = -Math.PI * 0.5;
-    this.groundGroup.add(puddleMesh);
+    this.puddleMesh.rotation.x = -Math.PI * 0.5;
+    this.puddleMesh.visible = this.profile.mode === 'patronus';
+    this.groundGroup.add(this.puddleMesh);
 
     // Zemin Kontak Gölgesi
     const sCanvas = document.createElement('canvas');
@@ -244,10 +247,10 @@ export class PetCompanionEngine {
     geo.setAttribute('color', new THREE.BufferAttribute(this.surfaceColors, 3));
 
     const mat = new THREE.PointsMaterial({
-      size: 4.2,
+      size: 2.6,
       vertexColors: true,
       transparent: true,
-      opacity: 0.88,
+      opacity: 0.72,
       map: softTex,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
@@ -395,6 +398,18 @@ export class PetCompanionEngine {
   public setMode(mode: 'patronus' | 'living') {
     this.profile.mode = mode;
     if (this.haloMesh) this.haloMesh.visible = mode === 'patronus';
+    if (this.puddleMesh) this.puddleMesh.visible = mode === 'patronus';
+    if (this.surfacePoints) {
+      this.surfacePoints.visible = mode === 'patronus';
+      if (mode !== 'patronus') {
+        // Canlı modda auranın tamamını anında temizle
+        for (let i = 0; i < this.SURFACE_COUNT; i++) {
+          this.surfaceList[i].active = false;
+          this.surfacePos[i * 3 + 1] = -9999;
+        }
+        this.surfacePoints.geometry.attributes.position.needsUpdate = true;
+      }
+    }
     if (this.catScene) {
       this.catScene.traverse((child) => {
         if ((child as THREE.Mesh).isMesh) {
@@ -406,6 +421,21 @@ export class PetCompanionEngine {
         }
       });
     }
+  }
+
+  public setScaleFactor(factor: number) {
+    this.currentScaleFactor = Math.max(0.3, Math.min(2.5, factor));
+    if (this.catScene) {
+      const s = this.catScale * this.currentScaleFactor;
+      this.catScene.scale.set(s, s, s);
+    }
+    if (this.groundGroup) {
+      this.groundGroup.scale.set(this.currentScaleFactor, 1, this.currentScaleFactor);
+    }
+  }
+
+  public getScaleFactor(): number {
+    return this.currentScaleFactor;
   }
 
   public updateProfile(newProfile: PetProfile) {
@@ -466,18 +496,19 @@ export class PetCompanionEngine {
 
     const cosR = Math.cos(this.catRotY);
     const sinR = Math.sin(this.catRotY);
-    const wx = this.catPos.x + v.x * cosR + v.z * sinR;
-    const wy = this.catPos.y + v.y;
-    const wz = this.catPos.z - v.x * sinR + v.z * cosR;
+    const scale = this.currentScaleFactor;
+    const wx = this.catPos.x + (v.x * cosR + v.z * sinR) * scale;
+    const wy = this.catPos.y + v.y * scale;
+    const wz = this.catPos.z + (-v.x * sinR + v.z * cosR) * scale;
 
     const isPetting = this.petReactTimer > 0;
     p.active = true;
     p.x = wx; p.y = wy; p.z = wz;
-    p.vx = (Math.random() - 0.5) * (isPetting ? 0.038 : 0.022);
-    p.vy = (isPetting ? 0.075 : 0.046) + Math.random() * 0.035;
-    p.vz = (Math.random() - 0.5) * (isPetting ? 0.038 : 0.022);
+    p.vx = (Math.random() - 0.5) * (isPetting ? 0.022 : 0.012);
+    p.vy = (isPetting ? 0.048 : 0.026) + Math.random() * 0.022;
+    p.vz = (Math.random() - 0.5) * (isPetting ? 0.022 : 0.012);
     p.age = 0;
-    p.life = 2.2 + Math.random() * 1.6;
+    p.life = 2.0 + Math.random() * 1.5;
   }
 
   private resetLegsToStand() {
@@ -742,7 +773,43 @@ export class PetCompanionEngine {
       this.dragPitch = Math.max(-0.45, Math.min(0.45, this.dragPitch - dy * 0.0035));
     });
 
-    window.addEventListener('pointerup', () => { this.isDragging = false; });
+    this.canvas.addEventListener('pointerup', () => { this.isDragging = false; });
+
+    // Çift Parmakla Büyütüp Küçültme (Pinch-to-zoom on Mobile)
+    let initialPinchDist: number | null = null;
+    let initialScale = 1.0;
+
+    this.canvas.addEventListener('touchstart', (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        initialPinchDist = Math.hypot(dx, dy);
+        initialScale = this.currentScaleFactor;
+      }
+    }, { passive: true });
+
+    this.canvas.addEventListener('touchmove', (e: TouchEvent) => {
+      if (e.touches.length === 2 && initialPinchDist !== null) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const currentDist = Math.hypot(dx, dy);
+        const ratio = currentDist / initialPinchDist;
+        this.setScaleFactor(initialScale * ratio);
+      }
+    }, { passive: true });
+
+    this.canvas.addEventListener('touchend', (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        initialPinchDist = null;
+      }
+    }, { passive: true });
+
+    // Masaüstü Fare Tekerleği ile Boyut Ayarı
+    this.canvas.addEventListener('wheel', (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = -e.deltaY * 0.0012;
+      this.setScaleFactor(this.currentScaleFactor + delta);
+    }, { passive: false });
   }
 
   public start() {
@@ -860,10 +927,12 @@ export class PetCompanionEngine {
 
         this.groundGroup.position.set(this.catPos.x, -16.0, this.catPos.z);
 
-        // Gövdeden Çıkan 1200 Zengin Patronus Parçacığı (Akıcı Ektoplazma Aurası)
+        // Gövdeden Çıkan Hafif & Asil Patronus Parçacıkları (Patronus Modu)
         if (this.profile.mode === 'patronus') {
+          this.surfacePoints.visible = true;
+          if (this.puddleMesh) this.puddleMesh.visible = true;
           const isPetting = this.petReactTimer > 0;
-          const spawnProb = isPetting ? 0.35 : 0.16;
+          const spawnProb = isPetting ? 0.25 : 0.12;
 
           for (let i = 0; i < this.SURFACE_COUNT; i++) {
             const p = this.surfaceList[i];
@@ -877,23 +946,27 @@ export class PetCompanionEngine {
                 p.active = false;
                 this.surfacePos[i * 3 + 1] = -9999;
               } else {
-                p.x += p.vx + Math.sin(time * 2.2 + p.phase) * 0.016;
+                p.x += p.vx + Math.sin(time * 2.0 + p.phase) * 0.012;
                 p.y += p.vy;
-                p.z += p.vz + Math.cos(time * 2.2 + p.phase) * 0.016;
+                p.z += p.vz + Math.cos(time * 2.0 + p.phase) * 0.012;
 
                 this.surfacePos[i * 3] = p.x;
                 this.surfacePos[i * 3 + 1] = p.y;
                 this.surfacePos[i * 3 + 2] = p.z;
 
-                const alpha = Math.sin(progress * Math.PI) * (isPetting ? 0.98 : 0.85);
-                this.surfaceColors[i * 3] = alpha * (isPetting ? 1.0 : 0.92);
-                this.surfaceColors[i * 3 + 1] = alpha * (isPetting ? 0.96 : 0.98);
+                const alpha = Math.sin(progress * Math.PI) * (isPetting ? 0.88 : 0.68);
+                this.surfaceColors[i * 3] = alpha * 0.88;
+                this.surfaceColors[i * 3 + 1] = alpha * 0.94;
                 this.surfaceColors[i * 3 + 2] = alpha * 1.0;
               }
             }
           }
           this.surfacePoints.geometry.attributes.position.needsUpdate = true;
           this.surfacePoints.geometry.attributes.color.needsUpdate = true;
+        } else {
+          // Canlı Mod: Aura ve gümüş havuz tamamen kapalı, sadece gerçekçi gölge kalır!
+          this.surfacePoints.visible = false;
+          if (this.puddleMesh) this.puddleMesh.visible = false;
         }
       }
     }

@@ -16,10 +16,18 @@ export const ARScreen: React.FC<ARScreenProps> = ({ profile, onOpenUpload, onOpe
   const engineRef = useRef<PetCompanionEngine | null>(null);
 
   const [mode, setMode] = useState<'patronus' | 'living'>(profile.mode);
+  const [sizePreset, setSizePreset] = useState<'table' | 'room' | 'large'>('room');
   const [chatVisible, setChatVisible] = useState(false);
   const [userSpeech, setUserSpeech] = useState('');
   const [petReply, setPetReply] = useState('');
   const [isReplying, setIsReplying] = useState(false);
+
+  const handleSetScale = (preset: 'table' | 'room' | 'large', scale: number) => {
+    setSizePreset(preset);
+    if (engineRef.current) {
+      engineRef.current.setScaleFactor(scale);
+    }
+  };
 
   useEffect(() => {
     // 1. Kamera Akışını Başlat
@@ -130,6 +138,37 @@ export const ARScreen: React.FC<ARScreenProps> = ({ profile, onOpenUpload, onOpe
         <TouchableOpacity style={styles.modeBadge} onPress={toggleMode}>
           <Text style={styles.modeBadgeText}>
             {mode === 'patronus' ? '👑 Patronus' : '🐾 Canlı'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Ortama Göre Boyutlandırma (Masa, Oda, Geniş Alan) */}
+      <View style={styles.sizeBar}>
+        <Text style={styles.sizeBarLabel}>📏 Boyut:</Text>
+        <TouchableOpacity
+          style={[styles.sizeBtn, sizePreset === 'table' && styles.sizeBtnActive]}
+          onPress={() => handleSetScale('table', 0.55)}
+        >
+          <Text style={[styles.sizeBtnText, sizePreset === 'table' && styles.sizeBtnTextActive]}>
+            🐾 Masa
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.sizeBtn, sizePreset === 'room' && styles.sizeBtnActive]}
+          onPress={() => handleSetScale('room', 1.0)}
+        >
+          <Text style={[styles.sizeBtnText, sizePreset === 'room' && styles.sizeBtnTextActive]}>
+            🐈 Oda
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.sizeBtn, sizePreset === 'large' && styles.sizeBtnActive]}
+          onPress={() => handleSetScale('large', 1.55)}
+        >
+          <Text style={[styles.sizeBtnText, sizePreset === 'large' && styles.sizeBtnTextActive]}>
+            🦁 Geniş
           </Text>
         </TouchableOpacity>
       </View>
@@ -248,6 +287,45 @@ const styles = StyleSheet.create({
   modeBadgeText: {
     color: '#ffd166',
     fontSize: 11,
+    fontWeight: 'bold',
+  },
+  sizeBar: {
+    position: 'absolute',
+    top: Platform.OS === 'web' ? 62 : 98,
+    alignSelf: 'center',
+    zIndex: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(18, 14, 26, 0.85)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    gap: 4,
+  },
+  sizeBarLabel: {
+    fontSize: 10,
+    color: '#cbd5e1',
+    fontWeight: 'bold',
+    marginRight: 2,
+  },
+  sizeBtn: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  sizeBtnActive: {
+    backgroundColor: '#ffd166',
+  },
+  sizeBtnText: {
+    fontSize: 10,
+    color: '#cbd5e1',
+    fontWeight: '600',
+  },
+  sizeBtnTextActive: {
+    color: '#0b0712',
     fontWeight: 'bold',
   },
   bottomBar: {
