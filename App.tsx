@@ -30,7 +30,7 @@ export default function App() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, currentScreen === 'ar' && { backgroundColor: 'transparent' }]}>
       <StatusBar style="light" />
       {currentScreen === 'ar' && (
         <ARScreen

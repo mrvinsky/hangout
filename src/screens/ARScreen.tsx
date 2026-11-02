@@ -22,6 +22,9 @@ export const ARScreen: React.FC<ARScreenProps> = ({ profile, onOpenUpload, onOpe
   const [petReply, setPetReply] = useState('');
   const [isReplying, setIsReplying] = useState(false);
 
+  const [cameraFacing, setCameraFacing] = useState<'back' | 'front'>('back');
+  const [hasVideoStream, setHasVideoStream] = useState(false);
+
   const handleSetScale = (preset: 'table' | 'room' | 'large', scale: number) => {
     setSizePreset(preset);
     if (engineRef.current) {
@@ -29,22 +32,45 @@ export const ARScreen: React.FC<ARScreenProps> = ({ profile, onOpenUpload, onOpe
     }
   };
 
-  useEffect(() => {
-    // 1. Kamera Akışını Başlat
+  const startCamera = (facing: 'back' | 'front') => {
     if (typeof navigator !== 'undefined' && navigator?.mediaDevices?.getUserMedia && videoRef.current) {
+      if (videoRef.current.srcObject) {
+        const s = videoRef.current.srcObject as MediaStream;
+        s.getTracks().forEach((track) => track.stop());
+      }
+
       navigator.mediaDevices
         .getUserMedia({
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          video: {
+            facingMode: facing === 'front' ? 'user' : { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
           audio: false,
         })
         .then((stream) => {
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
             videoRef.current.play();
+            setHasVideoStream(true);
           }
         })
-        .catch((err) => console.warn('Kamera açılamadı, simüle oda aktif:', err));
+        .catch((err) => {
+          console.warn('Web kamera açılamadı, şeffaf mod aktif:', err);
+          setHasVideoStream(false);
+        });
     }
+  };
+
+  const toggleCameraFacing = () => {
+    const nextFacing = cameraFacing === 'back' ? 'front' : 'back';
+    setCameraFacing(nextFacing);
+    startCamera(nextFacing);
+  };
+
+  useEffect(() => {
+    // 1. Kamera Akışını Başlat
+    startCamera('back');
 
     // 2. Three.js AR Motorunu Başlat
     if (canvasRef.current && !engineRef.current) {
@@ -53,6 +79,10 @@ export const ARScreen: React.FC<ARScreenProps> = ({ profile, onOpenUpload, onOpe
     }
 
     return () => {
+      if (videoRef.current?.srcObject) {
+        const s = videoRef.current.srcObject as MediaStream;
+        s.getTracks().forEach((track) => track.stop());
+      }
       if (engineRef.current) {
         engineRef.current.stop();
         engineRef.current = null;
@@ -107,7 +137,8 @@ export const ARScreen: React.FC<ARScreenProps> = ({ profile, onOpenUpload, onOpe
           height: '100%',
           objectFit: 'cover',
           zIndex: 1,
-          transform: 'scaleX(-1)',
+          opacity: hasVideoStream ? 1 : 0,
+          transform: cameraFacing === 'front' ? 'scaleX(-1)' : 'none',
         }}
       />
 
@@ -169,6 +200,13 @@ export const ARScreen: React.FC<ARScreenProps> = ({ profile, onOpenUpload, onOpe
         >
           <Text style={[styles.sizeBtnText, sizePreset === 'large' && styles.sizeBtnTextActive]}>
             🦁 Geniş
+          </Text>
+        </TouchableOpacity>
+
+        {/* Ön / Arka Kamera Çevir */}
+        <TouchableOpacity style={styles.sizeBtn} onPress={toggleCameraFacing}>
+          <Text style={styles.sizeBtnText}>
+            🔄 {cameraFacing === 'back' ? 'Ön' : 'Arka'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -240,7 +278,7 @@ export const ARScreen: React.FC<ARScreenProps> = ({ profile, onOpenUpload, onOpe
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: 'transparent',
     position: 'relative',
     overflow: 'hidden',
     width: '100%',
