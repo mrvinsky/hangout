@@ -8,6 +8,8 @@ import { GROUND_Y, GroundPlane } from './GroundPlane';
 import { AuraSystem, SwarmSystem } from './ParticleSystems';
 import { PetAudio } from './PetAudio';
 
+// Şablon kedi; profil kendi rig'li modelini (modelUrl) getirirse o kullanılır.
+// Özel modeller scripts/blender/rig_generated_cat.py ile aynı iskelete bağlanır.
 const MODEL_PATH = '/models/cat/source/Cat.glb';
 const CAT_SCALE = 45.0;
 const PATRONUS_EMISSIVE = 0xddeeff;
@@ -38,7 +40,7 @@ export class PetCompanionEngine {
   private catScene: THREE.Group | null = null;
   private rig: CatRig | null = null;
   private surfaceSamples: THREE.Vector3[] = [];
-  private furMaterials: { mat: THREE.MeshStandardMaterial; source: THREE.Texture }[] = [];
+  private furMaterials: { mat: THREE.MeshStandardMaterial; source: THREE.Texture | null }[] = [];
   private eyeLeft: THREE.Group | null = null;
   private eyeRight: THREE.Group | null = null;
   private halo: THREE.Mesh | null = null;
@@ -95,7 +97,7 @@ export class PetCompanionEngine {
 
   private loadModel() {
     new GLTFLoader().load(
-      MODEL_PATH,
+      this.profile.modelUrl || MODEL_PATH,
       (gltf) => {
         if (this.disposed) return;
         const cat = gltf.scene;
@@ -111,7 +113,7 @@ export class PetCompanionEngine {
             mat.roughness = 0.65;
             mat.metalness = 0.08;
             mat.side = THREE.DoubleSide;
-            if (mat.map) this.furMaterials.push({ mat, source: mat.map });
+            this.furMaterials.push({ mat, source: mat.map });
           }
           this.sampleSurface(mesh.geometry);
         });
@@ -182,7 +184,7 @@ export class PetCompanionEngine {
     const seed = seedFromId(p.id);
 
     for (const { mat, source } of this.furMaterials) {
-      const recolored = recolorFurTexture(source, mat.name, {
+      const recolored = source && recolorFurTexture(source, mat.name, {
         furHex: p.furColorHex,
         secondaryHex: p.secondaryColorHex || p.furColorHex,
         pattern: p.coatPattern,

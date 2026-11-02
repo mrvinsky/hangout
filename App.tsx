@@ -23,6 +23,7 @@ export default function App() {
     personality: 'Asil, Sakin ve Koruyucu Muhafız',
     patronusTitle: 'Lord Boban the Silver Guardian',
     mode: 'patronus',
+    modelUrl: '/models/boban/boban.glb',
     createdAt: Date.now(),
   });
 

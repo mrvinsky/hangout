@@ -85,7 +85,9 @@ flowchart LR
 │   │   ├── geminiPrompts.ts        # Ortak prompt'lar ve yanıt doğrulama
 │   │   └── petStorage.ts           # localStorage kalıcılığı
 │   └── types/pet.ts
-├── public/models/cat/          # Cat.glb (tek kaynak) + dokular
+├── public/models/cat/          # Cat.glb şablonu (iskelet kaynağı) + dokular
+├── public/models/boban/        # Boban'ın fotoğraftan üretilmiş, rig'li modeli
+├── scripts/                    # 3D üretim (Hugging Face) ve Blender rig script'leri
 ├── legacy/                     # İlk düz HTML prototipi
 └── docs/media/                 # Konsept görseller
 ```
@@ -152,8 +154,12 @@ QR kodu telefonla okut. Native uygulama, web arayüzünü Metro dev server'dan y
 - [ ] Konuşmayı metne çevirme → Gemini → miyav/hav tepkisi ve animasyon
 - [ ] İsmiyle seslenince başını sana çevirmesi
 
-### Faz 6 (Ar-Ge, opsiyonel): Fotoğraftan özgün 3D model
-- [ ] Tripo3D veya Trellis ile mesh üretip şablon iskelete aktarma (retarget)
+### Faz 6 (Ar-Ge): Fotoğraftan özgün 3D model 🔄
+- [x] Hunyuan3D-2.1 (Hugging Face, ücretsiz) ile fotoğraftan mesh: `scripts/gen3d_hf.py`
+- [x] Blender ile temizlik + şablon iskelete bağlama: `scripts/blender/rig_generated_cat.py`
+- [x] Profil `modelUrl` ile kendi modelini kullanabiliyor (Boban: `public/models/boban/boban.glb`)
+- [ ] Dokulu üretim ve dokuyu temizlenmiş mesh'e aktarma (bake)
+- [ ] Gözleri yeni modelin yüzüne otomatik yerleştirme
 
 ---
 
