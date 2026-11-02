@@ -35,8 +35,8 @@ export class PetCompanionEngine {
   private swarmPos!: Float32Array;
   private swarmVortex: { angle: number; r: number; y: number; speed: number }[] = [];
 
-  // Gövdeden Süzülen Yüzey Buharı
-  private readonly SURFACE_COUNT = 200;
+  // Gövdeden Süzülen Yüzey Buharı (1200 Zengin Patronus Parçacığı)
+  private readonly SURFACE_COUNT = 1200;
   private surfacePoints!: THREE.Points;
   private surfacePos!: Float32Array;
   private surfaceColors!: Float32Array;
@@ -46,6 +46,13 @@ export class PetCompanionEngine {
     vx: number; vy: number; vz: number;
     age: number; life: number; phase: number;
   }[] = [];
+
+  // Biyomekanik Davranış Durumu (Doğal Kedi Hareketleri)
+  private catBehavior: 'WALK' | 'IDLE' | 'PET_REACT' = 'WALK';
+  private behaviorTimer: number = 0;
+  private petReactTimer: number = 0;
+  private walkCyclePhase: number = 0;
+  private catRotYVel: number = 0;
 
   // State Machine
   private patronusState: 'IDLE' | 'SWARM' | 'CONVERGE' | 'ACTIVE' = 'IDLE';
@@ -237,10 +244,10 @@ export class PetCompanionEngine {
     geo.setAttribute('color', new THREE.BufferAttribute(this.surfaceColors, 3));
 
     const mat = new THREE.PointsMaterial({
-      size: 3.6,
+      size: 4.2,
       vertexColors: true,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.88,
       map: softTex,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
@@ -442,13 +449,9 @@ export class PetCompanionEngine {
   }
 
   public petPet() {
-    // Okşama tepkisi: Kafa hafifçe kalkar, gözler kısılır, kutsal ışık parlar
-    if (this.catBones['Head']) {
-      this.catBones['Head'].rotation.x += 0.25;
-      setTimeout(() => {
-        if (this.catBones['Head']) this.catBones['Head'].rotation.x -= 0.25;
-      }, 400);
-    }
+    // Okşama tepkisi: Mırlama, sırtını kabartma, kafayı yukarı kaldırma ve ışık parlaması
+    this.petReactTimer = 3.0;
+    this.catBehavior = 'PET_REACT';
   }
 
   private pickNewDestination() {
@@ -467,51 +470,234 @@ export class PetCompanionEngine {
     const wy = this.catPos.y + v.y;
     const wz = this.catPos.z - v.x * sinR + v.z * cosR;
 
+    const isPetting = this.petReactTimer > 0;
     p.active = true;
     p.x = wx; p.y = wy; p.z = wz;
-    p.vx = (Math.random() - 0.5) * 0.016;
-    p.vy = 0.042 + Math.random() * 0.032;
-    p.vz = (Math.random() - 0.5) * 0.016;
+    p.vx = (Math.random() - 0.5) * (isPetting ? 0.038 : 0.022);
+    p.vy = (isPetting ? 0.075 : 0.046) + Math.random() * 0.035;
+    p.vz = (Math.random() - 0.5) * (isPetting ? 0.038 : 0.022);
     p.age = 0;
-    p.life = 2.4 + Math.random() * 1.4;
+    p.life = 2.2 + Math.random() * 1.6;
   }
 
-  private updateProceduralWalk(time: number) {
+  private resetLegsToStand() {
+    const legBones = [
+      'Thigh_FR', 'Knee_FR', 'Foot_FR',
+      'Thigh_FL', 'Knee_FL', 'Foot_FL',
+      'Thigh_BR', 'Knee_BR', 'Foot_BR',
+      'Thigh_BL', 'Knee_BL', 'Foot_BL',
+    ];
+    for (const name of legBones) {
+      if (this.catBones[name] && this.catRestRot[name]) {
+        this.catBones[name].rotation.x += (this.catRestRot[name].x - this.catBones[name].rotation.x) * 0.12;
+        this.catBones[name].rotation.y += (this.catRestRot[name].y - this.catBones[name].rotation.y) * 0.12;
+        this.catBones[name].rotation.z += (this.catRestRot[name].z - this.catBones[name].rotation.z) * 0.12;
+      }
+    }
+  }
+
+  private updateCatBiomechanics(time: number, dt: number) {
     if (!this.catBones['Thigh_FR']) return;
-    const walkSpeed = 4.8;
-    const legAmp = 0.34;
-    const step = time * walkSpeed;
 
-    const swingR = Math.sin(step);
-    const swingL = Math.sin(step + Math.PI);
+    // Timer kontrolleri
+    if (this.petReactTimer > 0) {
+      this.petReactTimer -= dt;
+      this.catBehavior = 'PET_REACT';
+    } else if (this.behaviorTimer > 0) {
+      this.behaviorTimer -= dt;
+      if (this.behaviorTimer <= 0 && this.catBehavior === 'IDLE') {
+        this.catBehavior = 'WALK';
+        this.pickNewDestination();
+      }
+    }
 
-    // Bacaklar
+    // 1. OKŞANMA VE SEVİLME REAKSİYONU (PET_REACT)
+    if (this.catBehavior === 'PET_REACT') {
+      const purrWave = Math.sin(time * 18.0); // Tatlı mırlama rezonansı
+      
+      // Başını kullanıcının eline doğru gururla kaldırır
+      if (this.catBones['Head']) {
+        this.catBones['Head'].rotation.x = this.catRestRot['Head'].x + 0.38 + purrWave * 0.02;
+        this.catBones['Head'].rotation.z = this.catRestRot['Head'].z + Math.sin(time * 2.5) * 0.05;
+      }
+      if (this.catBones['Neck']) {
+        this.catBones['Neck'].rotation.x = this.catRestRot['Neck'].x + 0.18;
+      }
+      // Ağız hafif aralanır (sessiz mırlama)
+      if (this.catBones['Jaw']) {
+        this.catBones['Jaw'].rotation.x = this.catRestRot['Jaw'].x + 0.15 + purrWave * 0.02;
+      }
+      // Sırt kabartma (arching back)
+      if (this.catBones['Torso']) {
+        this.catBones['Torso'].rotation.x = this.catRestRot['Torso'].x + 0.08;
+        this.catBones['Torso'].rotation.z = this.catRestRot['Torso'].z + purrWave * 0.015;
+      }
+      // Kuyruk neşeyle havaya kalkar ve ucu kıvrılır
+      if (this.catBones['Tail_1']) this.catBones['Tail_1'].rotation.x = this.catRestRot['Tail_1'].x - 0.45;
+      if (this.catBones['Tail_2']) this.catBones['Tail_2'].rotation.x = this.catRestRot['Tail_2'].x + 0.35;
+      if (this.catBones['Tail_3']) {
+        this.catBones['Tail_3'].rotation.x = this.catRestRot['Tail_3'].x + 0.65;
+        this.catBones['Tail_3'].rotation.y = this.catRestRot['Tail_3'].y + Math.sin(time * 5.0) * 0.32;
+      }
+      this.resetLegsToStand();
+      return;
+    }
+
+    // 2. DURUŞ & MERAKLI ETRAFA BAKINMA MODU (IDLE)
+    if (this.catBehavior === 'IDLE') {
+      const breath = Math.sin(time * 2.2);
+
+      // Göğüs ve karın nefes alır gibi ritmik salınır
+      if (this.catBones['Torso']) {
+        this.catBones['Torso'].rotation.z = this.catRestRot['Torso'].z + breath * 0.028;
+      }
+      if (this.catBones['Pelvis']) {
+        this.catBones['Pelvis'].rotation.x = this.catRestRot['Pelvis'].x + breath * 0.016;
+      }
+
+      // Meraklı kafa hareketleri: Etrafa bakınır, başını yana eğer
+      const lookYaw = Math.sin(time * 0.75) * 0.28;
+      const headTilt = Math.cos(time * 0.95) * 0.12;
+      if (this.catBones['Neck']) {
+        this.catBones['Neck'].rotation.y = this.catRestRot['Neck'].y + lookYaw * 0.5;
+        this.catBones['Neck'].rotation.x = this.catRestRot['Neck'].x + breath * 0.02;
+      }
+      if (this.catBones['Head']) {
+        this.catBones['Head'].rotation.y = this.catRestRot['Head'].y + lookYaw * 0.7;
+        this.catBones['Head'].rotation.z = this.catRestRot['Head'].z + headTilt;
+        this.catBones['Head'].rotation.x = this.catRestRot['Head'].x - 0.04 + Math.sin(time * 1.1) * 0.03;
+      }
+
+      // Kulak seğirmesi (doğal kedi refleksi)
+      if (this.catBones['Ear_R1']) {
+        const twitch = Math.sin(time * 4.4) > 0.92 ? Math.sin(time * 26.0) * 0.18 : 0;
+        this.catBones['Ear_R1'].rotation.z = twitch;
+      }
+      if (this.catBones['Ear_L1']) {
+        const twitchL = Math.sin(time * 3.2) > 0.93 ? Math.sin(time * 24.0) * 0.18 : 0;
+        this.catBones['Ear_L1'].rotation.z = twitchL;
+      }
+
+      if (this.catBones['Jaw']) {
+        this.catBones['Jaw'].rotation.x = this.catRestRot['Jaw'].x;
+      }
+
+      // Tembel kuyruk salınımı
+      if (this.catBones['Tail_1']) this.catBones['Tail_1'].rotation.y = this.catRestRot['Tail_1'].y + Math.sin(time * 1.2) * 0.16;
+      if (this.catBones['Tail_2']) this.catBones['Tail_2'].rotation.y = this.catRestRot['Tail_2'].y + Math.sin(time * 1.2 - 0.7) * 0.30;
+      if (this.catBones['Tail_3']) this.catBones['Tail_3'].rotation.y = this.catRestRot['Tail_3'].y + Math.sin(time * 1.2 - 1.4) * 0.44;
+
+      this.resetLegsToStand();
+      return;
+    }
+
+    // 3. DOĞAL 4 AYAKLI KEDİ YÜRÜYÜŞÜ (WALK - Articulated Quadruped)
+    const walkSpeed = 4.4;
+    this.walkCyclePhase += dt * walkSpeed;
+    const step = this.walkCyclePhase;
+
+    // Çapraz adımlar (diagonal gait)
+    const phaseA = step;
+    const phaseB = step + Math.PI;
+
+    const swingFR = Math.sin(phaseA);
+    const swingFL = Math.sin(phaseB);
+    const swingBR = Math.sin(phaseB);
+    const swingBL = Math.sin(phaseA);
+
+    const legAmp = 0.38;
+
+    // --- ÖN SAĞ BACAK (FR) ---
     if (this.catBones['Thigh_FR']) {
-      this.catBones['Thigh_FR'].rotation.z = this.catRestRot['Thigh_FR'].z + swingR * legAmp;
+      this.catBones['Thigh_FR'].rotation.z = this.catRestRot['Thigh_FR'].z + swingFR * legAmp;
     }
+    if (this.catBones['Knee_FR']) {
+      // Öne atılırken diz kırılır, pati havaya kalkar
+      const kneeBend = swingFR < 0 ? -swingFR * 0.72 : swingFR * 0.14;
+      this.catBones['Knee_FR'].rotation.z = this.catRestRot['Knee_FR'].z - kneeBend;
+    }
+    if (this.catBones['Foot_FR']) {
+      this.catBones['Foot_FR'].rotation.z = this.catRestRot['Foot_FR'].z + Math.sin(phaseA - 0.4) * 0.32;
+    }
+
+    // --- ÖN SOL BACAK (FL) ---
     if (this.catBones['Thigh_FL']) {
-      this.catBones['Thigh_FL'].rotation.z = this.catRestRot['Thigh_FL'].z + swingL * legAmp;
+      this.catBones['Thigh_FL'].rotation.z = this.catRestRot['Thigh_FL'].z + swingFL * legAmp;
     }
+    if (this.catBones['Knee_FL']) {
+      const kneeBendL = swingFL < 0 ? -swingFL * 0.72 : swingFL * 0.14;
+      this.catBones['Knee_FL'].rotation.z = this.catRestRot['Knee_FL'].z - kneeBendL;
+    }
+    if (this.catBones['Foot_FL']) {
+      this.catBones['Foot_FL'].rotation.z = this.catRestRot['Foot_FL'].z + Math.sin(phaseB - 0.4) * 0.32;
+    }
+
+    // --- ARKA SAĞ BACAK (BR) ---
     if (this.catBones['Thigh_BR']) {
-      this.catBones['Thigh_BR'].rotation.x = this.catRestRot['Thigh_BR'].x + swingL * legAmp;
+      this.catBones['Thigh_BR'].rotation.x = this.catRestRot['Thigh_BR'].x + swingBR * legAmp;
     }
+    if (this.catBones['Knee_BR']) {
+      const rearKneeBend = swingBR > 0 ? swingBR * 0.65 : -swingBR * 0.15;
+      this.catBones['Knee_BR'].rotation.x = this.catRestRot['Knee_BR'].x + rearKneeBend;
+    }
+    if (this.catBones['Foot_BR']) {
+      this.catBones['Foot_BR'].rotation.x = this.catRestRot['Foot_BR'].x - Math.sin(phaseB - 0.3) * 0.28;
+    }
+
+    // --- ARKA SOL BACAK (BL) ---
     if (this.catBones['Thigh_BL']) {
-      this.catBones['Thigh_BL'].rotation.x = this.catRestRot['Thigh_BL'].x + swingR * legAmp;
+      this.catBones['Thigh_BL'].rotation.x = this.catRestRot['Thigh_BL'].x + swingBL * legAmp;
+    }
+    if (this.catBones['Knee_BL']) {
+      const rearKneeBendL = swingBL > 0 ? swingBL * 0.65 : -swingBL * 0.15;
+      this.catBones['Knee_BL'].rotation.x = this.catRestRot['Knee_BL'].x + rearKneeBendL;
+    }
+    if (this.catBones['Foot_BL']) {
+      this.catBones['Foot_BL'].rotation.x = this.catRestRot['Foot_BL'].x - Math.sin(phaseA - 0.3) * 0.28;
     }
 
-    // Kuyruk S-dalgası
-    if (this.catBones['Tail_1']) this.catBones['Tail_1'].rotation.y = this.catRestRot['Tail_1'].y + Math.sin(time * 2.2) * 0.22;
-    if (this.catBones['Tail_2']) this.catBones['Tail_2'].rotation.y = this.catRestRot['Tail_2'].y + Math.sin(time * 2.2 - 0.6) * 0.32;
-    if (this.catBones['Tail_3']) this.catBones['Tail_3'].rotation.y = this.catRestRot['Tail_3'].y + Math.sin(time * 2.2 - 1.2) * 0.42;
-
-    // Torso & Taç
+    // --- OMURGA, KALÇA VE GÖĞÜS DİNAMİĞİ ---
+    if (this.catBones['Pelvis']) {
+      this.catBones['Pelvis'].rotation.y = this.catRestRot['Pelvis'].y + Math.sin(step) * 0.08;
+      this.catBones['Pelvis'].rotation.x = this.catRestRot['Pelvis'].x + Math.cos(step * 2) * 0.04;
+    }
     if (this.catBones['Torso']) {
-      this.catBones['Torso'].rotation.z = this.catRestRot['Torso'].z + Math.cos(time * 1.8) * 0.035;
+      this.catBones['Torso'].rotation.y = this.catRestRot['Torso'].y - Math.sin(step) * 0.06;
+      this.catBones['Torso'].rotation.z = this.catRestRot['Torso'].z + Math.cos(step * 2) * 0.038;
     }
+
+    // --- BAŞ VE BOYUN DENGELEMESİ (HEAD BOBBING) ---
+    if (this.catBones['Neck']) {
+      this.catBones['Neck'].rotation.x = this.catRestRot['Neck'].x + Math.sin(step * 2 - 0.2) * 0.05;
+      this.catBones['Neck'].rotation.y = this.catRestRot['Neck'].y + Math.sin(step) * 0.04;
+    }
+    if (this.catBones['Head']) {
+      this.catBones['Head'].rotation.x = this.catRestRot['Head'].x - Math.sin(step * 2 - 0.2) * 0.035;
+      this.catBones['Head'].rotation.y = this.catRestRot['Head'].y + Math.max(-0.4, Math.min(0.4, this.catRotYVel * 3.2));
+    }
+
+    // --- AKICI S-DALGASI KUYRUK ---
+    if (this.catBones['Tail_1']) {
+      this.catBones['Tail_1'].rotation.y = this.catRestRot['Tail_1'].y + Math.sin(step * 1.4) * 0.26;
+      this.catBones['Tail_1'].rotation.x = this.catRestRot['Tail_1'].x + Math.cos(step * 1.4) * 0.12;
+    }
+    if (this.catBones['Tail_2']) {
+      this.catBones['Tail_2'].rotation.y = this.catRestRot['Tail_2'].y + Math.sin(step * 1.4 - 0.6) * 0.44;
+    }
+    if (this.catBones['Tail_3']) {
+      this.catBones['Tail_3'].rotation.y = this.catRestRot['Tail_3'].y + Math.sin(step * 1.4 - 1.2) * 0.62;
+    }
+
+    // Taç süzülmesi
     if (this.haloMesh && this.haloMesh.visible) {
       this.haloMesh.rotation.z += 0.035;
       this.haloMesh.position.y = 19.5 + Math.sin(time * 2.5) * 0.7;
     }
+  }
+
+  // Geriye dönük uyumluluk aliası
+  private updateProceduralWalk(time: number) {
+    this.updateCatBiomechanics(time, 0.016);
   }
 
   private initListeners() {
@@ -578,6 +764,7 @@ export class PetCompanionEngine {
     if (!this.isRunning) return;
     this.animFrameId = requestAnimationFrame(this.loop);
 
+    const dt = Math.min(this.clock.getDelta(), 0.05);
     const time = this.clock.getElapsedTime();
 
     // Kamera Yönelimi
@@ -630,7 +817,7 @@ export class PetCompanionEngine {
         }
         this.swarmPoints.geometry.attributes.position.needsUpdate = true;
       } else {
-        // Canlanma & Yürüyüş
+        // Canlanma & Biyomekanik Yaşam
         if (this.patronusState !== 'ACTIVE') {
           this.patronusState = 'ACTIVE';
           if (this.catScene) this.catScene.visible = true;
@@ -639,56 +826,68 @@ export class PetCompanionEngine {
           this.swarmPoints.visible = false;
         }
 
-        // Yürüyüş
-        const dx = this.catTargetPos.x - this.catPos.x;
-        const dz = this.catTargetPos.z - this.catPos.z;
-        const dist = Math.hypot(dx, dz);
+        // Biyomekanik Yönelme ve Yürüyüş
+        if (this.catBehavior === 'WALK') {
+          const dx = this.catTargetPos.x - this.catPos.x;
+          const dz = this.catTargetPos.z - this.catPos.z;
+          const dist = Math.hypot(dx, dz);
 
-        if (dist < 3) {
-          this.pickNewDestination();
+          if (dist < 4.5) {
+            // Hedefe ulaşıldı, meraklı duruş (IDLE) moduna geç
+            this.catBehavior = 'IDLE';
+            this.behaviorTimer = 2.5 + Math.random() * 3.0; // 2.5 - 5.5 sn mola
+            this.catRotYVel = 0;
+          } else {
+            this.catPos.x += (dx / dist) * this.catSpeed;
+            this.catPos.z += (dz / dist) * this.catSpeed;
+            const targetAngle = Math.atan2(dx, dz);
+            let diff = targetAngle - this.catRotY;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            const turnStep = diff * 0.08;
+            this.catRotY += turnStep;
+            this.catRotYVel = turnStep;
+          }
         } else {
-          this.catPos.x += (dx / dist) * this.catSpeed;
-          this.catPos.z += (dz / dist) * this.catSpeed;
-          const targetAngle = Math.atan2(dx, dz);
-          let diff = targetAngle - this.catRotY;
-          while (diff < -Math.PI) diff += Math.PI * 2;
-          while (diff > Math.PI) diff -= Math.PI * 2;
-          this.catRotY += diff * 0.08;
+          this.catRotYVel = 0;
         }
 
         if (this.catScene) {
           this.catScene.position.set(this.catPos.x, this.catPos.y, this.catPos.z);
           this.catScene.rotation.y = this.catRotY;
-          this.updateProceduralWalk(time);
+          this.updateCatBiomechanics(time, dt);
         }
 
         this.groundGroup.position.set(this.catPos.x, -16.0, this.catPos.z);
 
-        // Gövdeden Çıkan Parçacıklar (Patronus Modu)
+        // Gövdeden Çıkan 1200 Zengin Patronus Parçacığı (Akıcı Ektoplazma Aurası)
         if (this.profile.mode === 'patronus') {
+          const isPetting = this.petReactTimer > 0;
+          const spawnProb = isPetting ? 0.35 : 0.16;
+
           for (let i = 0; i < this.SURFACE_COUNT; i++) {
             const p = this.surfaceList[i];
             if (!p.active || p.age >= p.life) {
-              if (Math.random() < 0.1) this.spawnSurfaceParticle(i);
+              if (Math.random() < spawnProb) this.spawnSurfaceParticle(i);
             }
             if (p.active) {
-              p.age += 0.016;
+              p.age += dt;
               const progress = p.age / p.life;
               if (progress >= 1.0) {
                 p.active = false;
                 this.surfacePos[i * 3 + 1] = -9999;
               } else {
-                p.x += p.vx + Math.sin(time * 1.8 + p.phase) * 0.015;
+                p.x += p.vx + Math.sin(time * 2.2 + p.phase) * 0.016;
                 p.y += p.vy;
-                p.z += p.vz + Math.cos(time * 1.8 + p.phase) * 0.015;
+                p.z += p.vz + Math.cos(time * 2.2 + p.phase) * 0.016;
 
                 this.surfacePos[i * 3] = p.x;
                 this.surfacePos[i * 3 + 1] = p.y;
                 this.surfacePos[i * 3 + 2] = p.z;
 
-                const alpha = Math.sin(progress * Math.PI) * 0.9;
-                this.surfaceColors[i * 3] = alpha * 0.95;
-                this.surfaceColors[i * 3 + 1] = alpha * 0.98;
+                const alpha = Math.sin(progress * Math.PI) * (isPetting ? 0.98 : 0.85);
+                this.surfaceColors[i * 3] = alpha * (isPetting ? 1.0 : 0.92);
+                this.surfaceColors[i * 3 + 1] = alpha * (isPetting ? 0.96 : 0.98);
                 this.surfaceColors[i * 3 + 2] = alpha * 1.0;
               }
             }
