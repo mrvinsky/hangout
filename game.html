@@ -1162,102 +1162,126 @@
         }
       }
 
-      // British Shorthair Kedi Parçacık Anatomisi (Ozzy)
+      // British Shorthair Kedi Parçacık Anatomisi - YÜKSEK ÇÖZÜNÜRLÜK (1900+ Parçacık) & OZZY RENKLERİ
       generatePatronusParticles() {
         const pts = [];
 
-        // 1. Tombul Gövde (Chubby British Shorthair Torso) - ~110 parçacık
-        for (let i = 0; i < 110; i++) {
+        // 1. British Shorthair Duman Grisi / Füme Tombul Gövde (620 parçacık)
+        // Ozzy'nin orijinal British Blue tüy rengi: Duman grisi/füme + Patronus gümüş-mavi iç ışıltısı
+        for (let i = 0; i < 620; i++) {
           const a = Math.random() * Math.PI * 2;
           const r = Math.sqrt(Math.random());
-          pts.push({
-            type: "body",
-            lx: Math.cos(a) * 48 * r,
-            ly: Math.sin(a) * 32 * r + 8,
-            size: 2.2 + Math.random() * 2.2,
-            color: (r > 0.7) ? "#7dd3fc" : (Math.random() > 0.5 ? "#bae6fd" : "#e0f2fe"),
-            phase: Math.random() * 10
-          });
+          const lx = Math.cos(a) * 50 * r;
+          const ly = Math.sin(a) * 33 * r + 7;
+          
+          let color = "#5d6a78"; // Ana British Blue füme kürk
+          if (r > 0.88) {
+            color = "#a2d2ff"; // Patronus dış gümüş-mavi aura kenarı
+          } else if (ly < -8) {
+            color = "#8b9ba9"; // Sırt üst ışığı (açık duman grisi)
+          } else if (ly > 22) {
+            color = "#45505a"; // Göbek altı gölgesi (koyu antrasit)
+          } else if (lx > 15) {
+            color = "#9cb0c0"; // Göğüs yelesi parıltısı
+          }
+          pts.push({ type: "body", lx, ly, size: 1.6 + Math.random() * 0.9, color, phase: Math.random() * 10 });
         }
 
-        // 2. Yuvarlak Kafa (Classic Round Skull) - ~75 parçacık
-        for (let i = 0; i < 75; i++) {
+        // 2. Meşhur Yuvarlak Kafa (Classic Round Skull - 380 parçacık)
+        for (let i = 0; i < 380; i++) {
           const a = Math.random() * Math.PI * 2;
           const r = Math.sqrt(Math.random());
-          pts.push({
-            type: "head",
-            lx: 34 + Math.cos(a) * 28 * r,
-            ly: -18 + Math.sin(a) * 28 * r,
-            size: 2.2 + Math.random() * 2.2,
-            color: (r > 0.65) ? "#a2d2ff" : "#ffffff",
-            phase: Math.random() * 10
-          });
+          const lx = 34 + Math.cos(a) * 28 * r;
+          const ly = -18 + Math.sin(a) * 28 * r;
+          let color = "#687684";
+          if (r > 0.88) {
+            color = "#bae6fd"; // Kafa dış hat ışıltısı
+          } else if (ly < -30) {
+            color = "#99aab9"; // Alın tepe ışığı
+          } else if (ly > -5) {
+            color = "#4b5660"; // Çene altı gölgesi
+          }
+          pts.push({ type: "head", lx, ly, size: 1.6 + Math.random() * 0.9, color, phase: Math.random() * 10 });
         }
 
-        // 3. Pofuduk Tombul Yanaklar (Ozzy'nin Meşhur Yanakları!) - 2 x 30 parçacık
-        for (let i = 0; i < 30; i++) {
+        // 3. Pofuduk Tombul Yanaklar (Ozzy'nin Meşhur Yanakları - 250 parçacık)
+        // Videodaki belirgin açık duman grisi tombul yanak torbaları
+        for (let i = 0; i < 130; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const r = Math.sqrt(Math.random()) * 15;
+          pts.push({ type: "cheek", lx: 48 + Math.cos(a) * r, ly: -10 + Math.sin(a) * r, size: 1.8, color: "#8a9aa8", phase: Math.random() * 10 });
+        }
+        for (let i = 0; i < 120; i++) {
           const a = Math.random() * Math.PI * 2;
           const r = Math.sqrt(Math.random()) * 14;
-          pts.push({
-            type: "cheek",
-            lx: 48 + Math.cos(a) * r,
-            ly: -10 + Math.sin(a) * r,
-            size: 2.5 + Math.random() * 1.5,
-            color: "#93c5fd",
-            phase: Math.random() * 10
-          });
-          pts.push({
-            type: "cheek",
-            lx: 24 + Math.cos(a) * r,
-            ly: -10 + Math.sin(a) * r,
-            size: 2.5 + Math.random() * 1.5,
-            color: "#93c5fd",
-            phase: Math.random() * 10
-          });
+          pts.push({ type: "cheek", lx: 22 + Math.cos(a) * r, ly: -10 + Math.sin(a) * r, size: 1.8, color: "#8a9aa8", phase: Math.random() * 10 });
         }
 
-        // 4. Yuvarlak Uçlu Kulaklar (Round-tipped Ears) - 2 x 18 parçacık
-        for (let i = 0; i < 18; i++) {
+        // 4. Yuvarlak Uçlu Kulaklar (120 parçacık)
+        // Dış kürk koyu duman grisi, iç kulak açık pembe-leylak (British Shorthair anatomisi)
+        for (let i = 0; i < 60; i++) {
           const t = Math.random();
-          pts.push({
-            type: "ear",
-            lx: 18 + (Math.random() - 0.5) * 14 * (1 - t),
-            ly: -36 - t * 20,
-            size: 2.0 + Math.random() * 1.5,
-            color: "#60a5fa",
-            phase: Math.random() * 10
-          });
-          pts.push({
-            type: "ear",
-            lx: 44 + (Math.random() - 0.5) * 14 * (1 - t),
-            ly: -36 - t * 20,
-            size: 2.0 + Math.random() * 1.5,
-            color: "#60a5fa",
-            phase: Math.random() * 10
-          });
+          const w = (1 - t) * 14;
+          const lx = 18 + (Math.random() - 0.5) * w;
+          const ly = -34 - t * 20;
+          const isInner = Math.random() > 0.4 && t < 0.75;
+          pts.push({ type: "ear", lx, ly, size: 1.7, color: isInner ? "#be9aa8" : "#4a555f", phase: Math.random() * 10 });
+        }
+        for (let i = 0; i < 60; i++) {
+          const t = Math.random();
+          const w = (1 - t) * 14;
+          const lx = 44 + (Math.random() - 0.5) * w;
+          const ly = -34 - t * 20;
+          const isInner = Math.random() > 0.4 && t < 0.75;
+          pts.push({ type: "ear", lx, ly, size: 1.7, color: isInner ? "#be9aa8" : "#4a555f", phase: Math.random() * 10 });
         }
 
-        // 5. Büyüleyici Kehribar/Altın Gözler (Glowing Amber Stars) - 2 x 12 parçacık
-        for (let i = 0; i < 12; i++) {
-          pts.push({
-            type: "eye",
-            lx: 28 + (Math.random() - 0.5) * 6,
-            ly: -22 + (Math.random() - 0.5) * 6,
-            size: 3.5,
-            color: "#ffb703",
-            phase: Math.random() * 10
-          });
-          pts.push({
-            type: "eye",
-            lx: 46 + (Math.random() - 0.5) * 6,
-            ly: -22 + (Math.random() - 0.5) * 6,
-            size: 3.5,
-            color: "#ffb703",
-            phase: Math.random() * 10
-          });
+        // 5. Sevimli Pembe-Gül Burun & Ağız Çizgisi (35 parçacık)
+        for (let i = 0; i < 20; i++) {
+          const t = Math.random();
+          pts.push({ type: "nose", lx: 43 + (Math.random() - 0.5) * 6 * (1 - t), ly: -13 + t * 4, size: 1.6, color: "#d98596", phase: Math.random() * 10 });
+        }
+        for (let i = 0; i < 15; i++) {
+          pts.push({ type: "mouth", lx: 38 + (i % 2 === 0 ? -1 : 1) * (i * 0.4), ly: -8 + Math.sin(i) * 2, size: 1.4, color: "#3a444d", phase: Math.random() * 10 });
         }
 
-        // 6. Dört Bacak ve Patiler (4 Animated Legs & Paws)
+        // 6. Gümüşi Beyaz Bıyıklar (Whiskers - 50 parçacık)
+        const whiskerOffsets = [
+          { startX: 49, startY: -11, endX: 78, endY: -16 },
+          { startX: 49, startY: -9, endX: 80, endY: -8 },
+          { startX: 49, startY: -7, endX: 76, endY: 1 },
+          { startX: 23, startY: -11, endX: -6, endY: -16 },
+          { startX: 23, startY: -9, endX: -8, endY: -8 },
+          { startX: 23, startY: -7, endX: -4, endY: 1 }
+        ];
+        whiskerOffsets.forEach(w => {
+          for (let s = 0; s < 8; s++) {
+            const f = s / 7;
+            pts.push({ type: "whisker", lx: w.startX + (w.endX - w.startX) * f, ly: w.startY + (w.endY - w.startY) * f, size: 1.3, color: "#ffffff", phase: Math.random() * 10 });
+          }
+        });
+
+        // 7. BÜYÜLEYİCİ KEHRİBAR / ALTIN GÖZLER (Videodaki Ozzy Gözleri - 70 parçacık)
+        // Canlı kehribar/bal rengi iris + dikey siyah kedi göz bebeği + beyaz parıltı!
+        const eyeCenters = [{ x: 27, y: -21 }, { x: 45, y: -21 }];
+        eyeCenters.forEach(ec => {
+          // İris: Zengin Kehribar / Altın
+          for (let i = 0; i < 26; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const r = Math.sqrt(Math.random()) * 6.5;
+            const col = (r < 3.2) ? "#ffd166" : (r < 5.2 ? "#ffb703" : "#d97706");
+            pts.push({ type: "eye", lx: ec.x + Math.cos(a) * r, ly: ec.y + Math.sin(a) * r, size: 2.1, color: col, phase: Math.random() * 10 });
+          }
+          // Dikey Siyah Göz Bebeği (Pupil)
+          for (let i = -3; i <= 3; i++) {
+            pts.push({ type: "pupil", lx: ec.x, ly: ec.y + i * 1.5, size: 2.2, color: "#050505", phase: 0 });
+          }
+          // Beyaz Işık Yansıması (Canlılık Parıltısı)
+          pts.push({ type: "glint", lx: ec.x - 2, ly: ec.y - 2.2, size: 2.4, color: "#ffffff", phase: 0 });
+          pts.push({ type: "glint", lx: ec.x + 1.8, ly: ec.y + 1.8, size: 1.6, color: "#ffffff", phase: 0 });
+        });
+
+        // 8. Dört Bacak ve Patiler (260 parçacık)
         const legs = [
           { id: "bl", hipX: -26, hipY: 18, isBack: true, phaseOffset: 0 },
           { id: "br", hipX: 20, hipY: 18, isBack: true, phaseOffset: Math.PI },
@@ -1265,53 +1289,66 @@
           { id: "fr", hipX: 32, hipY: 22, isBack: false, phaseOffset: 0 }
         ];
         legs.forEach(leg => {
-          for (let s = 0; s < 10; s++) {
+          for (let row = 0; row < 12; row++) {
+            const seg = row / 12;
+            for (let col = -1; col <= 1; col++) {
+              pts.push({
+                type: "leg",
+                legId: leg.id,
+                hipX: leg.hipX,
+                hipY: leg.hipY,
+                seg,
+                colOffset: col * 2.8,
+                len: 26,
+                phaseOffset: leg.phaseOffset,
+                size: 1.8,
+                color: leg.isBack ? "#4e5965" : "#62707e",
+                phase: Math.random() * 10
+              });
+            }
+          }
+          // Yuvarlak Patiler ve Turkuaz Adım Işıltısı
+          for (let p = 0; p < 12; p++) {
+            const a = (p / 12) * Math.PI * 2;
             pts.push({
-              type: "leg",
+              type: "paw",
               legId: leg.id,
               hipX: leg.hipX,
               hipY: leg.hipY,
-              seg: s / 10,
-              len: 26,
               phaseOffset: leg.phaseOffset,
-              size: 2.4,
-              color: leg.isBack ? "#7dd3fc" : "#bae6fd",
+              pawOffsetX: Math.cos(a) * 5.5,
+              pawOffsetY: Math.sin(a) * 3.5,
+              size: 2.2,
+              color: (p % 2 === 0) ? "#8393a2" : "#00f5d4",
               phase: Math.random() * 10
             });
           }
-          // Parlayan Kedi Patisi
-          pts.push({
-            type: "paw",
-            legId: leg.id,
-            hipX: leg.hipX,
-            hipY: leg.hipY,
-            phaseOffset: leg.phaseOffset,
-            size: 4.2,
-            color: "#00f5d4",
-            phase: Math.random() * 10
-          });
         });
 
-        // 7. Kalın ve Pofuduk Kuyruk (Thick Plush Tail) - ~32 parçacık
-        for (let i = 0; i < 32; i++) {
-          pts.push({
-            type: "tail",
-            t: i / 32,
-            size: 2.4 + (1 - i / 32) * 2.5,
-            color: "#93c5fd",
-            phase: Math.random() * 10
-          });
+        // 9. Kalın ve Pofuduk Kuyruk (Thick British Shorthair Tail - 180 parçacık)
+        for (let s = 0; s < 30; s++) {
+          const t = s / 30;
+          const thick = (1 - t * 0.45) * 8.5;
+          for (let r = -2; r <= 2; r++) {
+            pts.push({
+              type: "tail",
+              t,
+              rOffset: (r / 2) * thick,
+              size: 1.8,
+              color: Math.abs(r) === 2 ? "#a2d2ff" : "#57636f",
+              phase: Math.random() * 10
+            });
+          }
         }
 
-        // 8. Lord Boban Kutsal Altın Halesi (Golden Floating Crown Halo) - ~26 parçacık
-        for (let i = 0; i < 26; i++) {
-          pts.push({
-            type: "halo",
-            angle: (i / 26) * Math.PI * 2,
-            size: 2.8,
-            color: "#ffd166",
-            phase: Math.random() * 10
-          });
+        // 10. Kutsal Lord Boban Altın Halesi & Tacı (80 parçacık)
+        for (let i = 0; i < 45; i++) {
+          const a = (i / 45) * Math.PI * 2;
+          pts.push({ type: "halo", angle: a, rX: 25, rY: 8, size: 2.2, color: "#ffd166", phase: Math.random() * 10 });
+        }
+        for (let i = 0; i < 35; i++) {
+          const a = (i / 35) * Math.PI * 2;
+          pts.push({ type: "halo_inner", angle: a, rX: 20, rY: 6, size: 1.8, color: "#ffb703", phase: Math.random() * 10 });
         }
 
         return pts;
@@ -1326,15 +1363,15 @@
 
         targetCtx.save();
 
-        // 1. Odayı Aydınlatan İlahi Patronus Halesi & Parıltısı (Odayı aydınlatır)
-        const auraGrad = targetCtx.createRadialGradient(catX, catY, 20, catX, catY, 190);
+        // 1. Odayı Aydınlatan İlahi Patronus Halesi & Parıltısı
+        const auraGrad = targetCtx.createRadialGradient(catX, catY, 20, catX, catY, 200);
         auraGrad.addColorStop(0, "rgba(224, 242, 254, 0.65)");
         auraGrad.addColorStop(0.35, "rgba(162, 210, 255, 0.4)");
         auraGrad.addColorStop(0.7, "rgba(56, 189, 248, 0.15)");
         auraGrad.addColorStop(1, "rgba(162, 210, 255, 0)");
         targetCtx.fillStyle = auraGrad;
         targetCtx.beginPath();
-        targetCtx.arc(catX, catY, 190, 0, Math.PI * 2);
+        targetCtx.arc(catX, catY, 200, 0, Math.PI * 2);
         targetCtx.fill();
 
         // 2. Parçacık Pozisyonlarını Hesapla
@@ -1347,36 +1384,36 @@
           const p = this.particles[i];
           let lx = 0, ly = 0;
 
-          // Canlı nefes alan ruhani titreşim
-          const jitterX = Math.sin(this.time * 6 + p.phase) * 1.8;
-          const jitterY = Math.cos(this.time * 5 + p.phase) * 1.8;
+          // Canlı nefes alan ruhani titreşim (Netliği bozmayacak şekilde çok ince 1.2px)
+          const jitterX = Math.sin(this.time * 6 + p.phase) * 1.2;
+          const jitterY = Math.cos(this.time * 5 + p.phase) * 1.2;
 
-          if (p.type === "body" || p.type === "head" || p.type === "cheek" || p.type === "ear") {
+          if (p.type === "body" || p.type === "head" || p.type === "cheek" || p.type === "ear" || p.type === "nose" || p.type === "mouth" || p.type === "whisker") {
             lx = p.lx + jitterX;
             ly = p.ly + jitterY;
-          } else if (p.type === "eye") {
+          } else if (p.type === "eye" || p.type === "pupil" || p.type === "glint") {
             if (this.isBlinking) continue; // Göz kırpma
-            lx = p.lx + jitterX * 0.5;
-            ly = p.ly + jitterY * 0.5;
+            lx = p.lx + jitterX * 0.3;
+            ly = p.ly + jitterY * 0.3;
           } else if (p.type === "leg") {
             const swing = Math.sin(this.walkCycle * 4 + p.phaseOffset) * 0.4;
             const currentLen = p.seg * p.len;
-            lx = p.hipX + Math.sin(swing) * currentLen + jitterX * 0.5;
-            ly = p.hipY + Math.cos(swing) * currentLen + jitterY * 0.5;
+            lx = p.hipX + p.colOffset + Math.sin(swing) * currentLen + jitterX * 0.4;
+            ly = p.hipY + Math.cos(swing) * currentLen + jitterY * 0.4;
           } else if (p.type === "paw") {
             const swing = Math.sin(this.walkCycle * 4 + p.phaseOffset) * 0.4;
-            lx = p.hipX + Math.sin(swing) * 27 + jitterX * 0.5;
-            ly = p.hipY + Math.cos(swing) * 27 + jitterY * 0.5;
+            lx = p.hipX + p.pawOffsetX + Math.sin(swing) * 27 + jitterX * 0.4;
+            ly = p.hipY + p.pawOffsetY + Math.cos(swing) * 27 + jitterY * 0.4;
           } else if (p.type === "tail") {
             const t = p.t;
             const bx = -45 - t * 45;
             const by = 8 - t * 40 + Math.sin(tailWag + t * 2) * 24;
-            lx = bx + jitterX * 0.8;
-            ly = by + jitterY * 0.8;
-          } else if (p.type === "halo") {
+            lx = bx + p.rOffset + jitterX * 0.6;
+            ly = by + jitterY * 0.6;
+          } else if (p.type === "halo" || p.type === "halo_inner") {
             const a = p.angle + haloOrbit;
-            lx = 34 + Math.cos(a) * 26 + jitterX * 0.4;
-            ly = -62 + Math.sin(a) * 8 + jitterY * 0.4;
+            lx = 34 + Math.cos(a) * p.rX + jitterX * 0.3;
+            ly = -62 + Math.sin(a) * p.rY + jitterY * 0.3;
           }
 
           // Yön ve Ekran Dönüşümü
@@ -1388,40 +1425,38 @@
             size: p.size,
             color: p.color,
             isEye: p.type === "eye",
-            isHalo: p.type === "halo"
+            isPupil: p.type === "pupil",
+            isGlint: p.type === "glint",
+            isHalo: p.type.startsWith("halo")
           });
         }
 
-        // 3. Ethereal Enerji Ağı (Constellation Filaments)
-        targetCtx.strokeStyle = "rgba(162, 210, 255, 0.22)";
-        targetCtx.lineWidth = 1;
-        targetCtx.beginPath();
-        const len = renderedPoints.length;
-        for (let a = 0; a < len; a += 3) {
-          const p1 = renderedPoints[a];
-          for (let b = a + 1; b < Math.min(a + 12, len); b++) {
-            const p2 = renderedPoints[b];
-            const distSq = (p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2;
-            if (distSq < 220) {
-              targetCtx.moveTo(p1.x, p1.y);
-              targetCtx.lineTo(p2.x, p2.y);
-            }
-          }
-        }
-        targetCtx.stroke();
-
-        // 4. Parçacıkları Çiz (Glow Dots)
-        for (let i = 0; i < len; i++) {
+        // 3. Parçacıkları Çiz (Yüksek Netlik & Doğru Renkler)
+        // Renk gruplarına göre veya doğrudan net parıltıyla çizim
+        for (let i = 0; i < renderedPoints.length; i++) {
           const pt = renderedPoints[i];
           targetCtx.fillStyle = pt.color;
-          targetCtx.shadowBlur = pt.isEye ? 16 : (pt.isHalo ? 12 : 8);
-          targetCtx.shadowColor = pt.color;
+          if (pt.isEye) {
+            targetCtx.shadowBlur = 10;
+            targetCtx.shadowColor = "#ffb703";
+          } else if (pt.isPupil) {
+            targetCtx.shadowBlur = 0;
+          } else if (pt.isGlint) {
+            targetCtx.shadowBlur = 4;
+            targetCtx.shadowColor = "#ffffff";
+          } else if (pt.isHalo) {
+            targetCtx.shadowBlur = 8;
+            targetCtx.shadowColor = "#ffd166";
+          } else {
+            targetCtx.shadowBlur = 4;
+            targetCtx.shadowColor = pt.color;
+          }
           targetCtx.beginPath();
           targetCtx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
           targetCtx.fill();
         }
 
-        // 5. Lord Boban Kutsal Başlığı 👑
+        // 4. Lord Boban Kutsal Başlığı 👑
         targetCtx.shadowBlur = 14;
         targetCtx.shadowColor = "#ffd166";
         targetCtx.fillStyle = "#ffd166";
