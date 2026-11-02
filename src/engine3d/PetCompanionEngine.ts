@@ -183,7 +183,13 @@ export class PetCompanionEngine {
     const p = this.profile;
     const seed = seedFromId(p.id);
 
+    // Fotoğraftan üretilmiş özel modelin dokusu zaten gerçek kürk: yeniden boyama
+    const keepOwnTexture = !!p.modelUrl;
     for (const { mat, source } of this.furMaterials) {
+      if (keepOwnTexture && source) {
+        mat.color.set(0xffffff);
+        continue;
+      }
       const recolored = source && recolorFurTexture(source, mat.name, {
         furHex: p.furColorHex,
         secondaryHex: p.secondaryColorHex || p.furColorHex,
