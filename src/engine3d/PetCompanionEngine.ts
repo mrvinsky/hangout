@@ -305,6 +305,10 @@ export class PetCompanionEngine {
               mat.metalness = 0.08;
               mat.side = THREE.DoubleSide;
 
+              if (this.profile.furColorHex) {
+                mat.color = new THREE.Color(this.profile.furColorHex);
+              }
+
               if (this.profile.mode === 'patronus') {
                 mat.emissive = new THREE.Color(0xddeeff);
                 mat.emissiveIntensity = 0.38;
@@ -395,6 +399,46 @@ export class PetCompanionEngine {
         }
       });
     }
+  }
+
+  public updateProfile(newProfile: PetProfile) {
+    this.profile = newProfile;
+    if (this.catScene) {
+      // 1. Kürk rengini ve materyalini güncelle
+      this.catScene.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const m = child as THREE.Mesh;
+          if (m.material) {
+            const mat = m.material as THREE.MeshStandardMaterial;
+            if (newProfile.furColorHex) {
+              mat.color = new THREE.Color(newProfile.furColorHex);
+            }
+            if (newProfile.mode === 'patronus') {
+              mat.emissive = new THREE.Color(0xddeeff);
+              mat.emissiveIntensity = 0.38;
+            } else {
+              mat.emissive = new THREE.Color(0x000000);
+              mat.emissiveIntensity = 0.0;
+            }
+          }
+        }
+      });
+
+      // 2. Gözleri yeni renk ile baştan oluştur
+      if (this.eyeLeftGroup) this.catScene.remove(this.eyeLeftGroup);
+      if (this.eyeRightGroup) this.catScene.remove(this.eyeRightGroup);
+      this.eyeLeftGroup = this.createAmberEye(-1, this.profile.eyeColorHex);
+      this.eyeRightGroup = this.createAmberEye(1, this.profile.eyeColorHex);
+      this.catScene.add(this.eyeLeftGroup);
+      this.catScene.add(this.eyeRightGroup);
+
+      // 3. Taç durumunu güncelle
+      if (this.haloMesh) {
+        this.haloMesh.visible = this.profile.mode === 'patronus';
+      }
+    }
+    // Yeni görünümü manyetik girdapla sahneye çağır
+    this.summon();
   }
 
   public petPet() {

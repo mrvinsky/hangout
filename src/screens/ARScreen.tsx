@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Platform } from 'react-native';
 import { PetCompanionEngine } from '../engine3d/PetCompanionEngine';
 import { PetProfile } from '../types/pet';
 import { generatePetMessage } from '../services/geminiService';
@@ -23,7 +23,7 @@ export const ARScreen: React.FC<ARScreenProps> = ({ profile, onOpenUpload, onOpe
 
   useEffect(() => {
     // 1. Kamera Akışını Başlat
-    if (navigator?.mediaDevices?.getUserMedia && videoRef.current) {
+    if (typeof navigator !== 'undefined' && navigator?.mediaDevices?.getUserMedia && videoRef.current) {
       navigator.mediaDevices
         .getUserMedia({
           video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -50,6 +50,14 @@ export const ARScreen: React.FC<ARScreenProps> = ({ profile, onOpenUpload, onOpe
         engineRef.current = null;
       }
     };
+  }, []);
+
+  // Profil değiştiğinde 3D Motoru canlı güncelle
+  useEffect(() => {
+    if (engineRef.current) {
+      engineRef.current.updateProfile(profile);
+      setMode(profile.mode);
+    }
   }, [profile]);
 
   const toggleMode = () => {
@@ -84,24 +92,14 @@ export const ARScreen: React.FC<ARScreenProps> = ({ profile, onOpenUpload, onOpe
         autoPlay
         muted
         style={{
-          position: 'fixed' as any,
+          position: 'absolute',
           top: 0,
           left: 0,
-          width: '100vw',
-          height: '100vh',
+          width: '100%',
+          height: '100%',
           objectFit: 'cover',
           zIndex: 1,
           transform: 'scaleX(-1)',
-        }}
-      />
-      <div
-        id="simulatedRoom"
-        style={{
-          position: 'fixed' as any,
-          inset: 0,
-          background: 'radial-gradient(circle at center, #1b1627 0%, #08060e 100%)',
-          zIndex: 1,
-          display: 'none',
         }}
       />
 
@@ -109,34 +107,38 @@ export const ARScreen: React.FC<ARScreenProps> = ({ profile, onOpenUpload, onOpe
       <canvas
         ref={canvasRef}
         style={{
-          position: 'fixed' as any,
-          inset: 0,
-          width: '100vw',
-          height: '100vh',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
           zIndex: 5,
+          touchAction: 'none',
         }}
       />
 
-      {/* HUD Üst Bar */}
+      {/* HUD Üst Bar (Mobil Çentik & Güvenli Alan Uyumlu) */}
       <View style={styles.topBar}>
-        <View>
-          <Text style={styles.petTitle}>
+        <View style={styles.topBarLeft}>
+          <Text style={styles.petTitle} numberOfLines={1}>
             {mode === 'patronus' ? '✨ ' + profile.patronusTitle : '🐾 ' + profile.name}
           </Text>
-          <Text style={styles.petSubtitle}>{profile.breed}</Text>
+          <Text style={styles.petSubtitle} numberOfLines={1}>
+            {profile.breed}
+          </Text>
         </View>
         <TouchableOpacity style={styles.modeBadge} onPress={toggleMode}>
           <Text style={styles.modeBadgeText}>
-            {mode === 'patronus' ? '👑 Patronus' : '🐾 Canlı Mod'}
+            {mode === 'patronus' ? '👑 Patronus' : '🐾 Canlı'}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Alt Kontrol Barı */}
+      {/* Alt Kontrol Barı (Responsive Esnek Flexbox) */}
       <View style={styles.bottomBar}>
         <TouchableOpacity style={styles.glassButton} onPress={handlePet}>
           <Text style={styles.btnIcon}>🖐️</Text>
-          <Text style={styles.btnLabel}>Sev & Okşa</Text>
+          <Text style={styles.btnLabel} numberOfLines={1}>Okşa</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -148,12 +150,12 @@ export const ARScreen: React.FC<ARScreenProps> = ({ profile, onOpenUpload, onOpe
 
         <TouchableOpacity style={styles.glassButton} onPress={() => setChatVisible(true)}>
           <Text style={styles.btnIcon}>💬</Text>
-          <Text style={styles.btnLabel}>Seslen</Text>
+          <Text style={styles.btnLabel} numberOfLines={1}>Seslen</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.glassButton} onPress={onOpenUpload}>
           <Text style={styles.btnIcon}>📸</Text>
-          <Text style={styles.btnLabel}>Yeni Hayvan</Text>
+          <Text style={styles.btnLabel} numberOfLines={1}>Yeni Hayvan</Text>
         </TouchableOpacity>
       </View>
 
@@ -200,31 +202,38 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+    position: 'relative',
+    overflow: 'hidden',
+    width: '100%',
+    height: '100%',
   },
   topBar: {
     position: 'absolute',
-    top: 20,
-    left: 16,
-    right: 16,
+    top: Platform.OS === 'web' ? 12 : 44,
+    left: 10,
+    right: 10,
     zIndex: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(18, 14, 26, 0.75)',
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 20,
+    backgroundColor: 'rgba(18, 14, 26, 0.85)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.3)',
+    borderColor: 'rgba(255, 215, 0, 0.35)',
+  },
+  topBarLeft: {
+    flex: 1,
+    marginRight: 8,
   },
   petTitle: {
-    fontFamily: 'Cinzel',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#ffd166',
   },
   petSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#cbd5e1',
     marginTop: 2,
   },
@@ -232,113 +241,121 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 215, 0, 0.2)',
     borderWidth: 1,
     borderColor: '#ffd166',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
   },
   modeBadgeText: {
     color: '#ffd166',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
   },
   bottomBar: {
     position: 'absolute',
-    bottom: 24,
-    left: 16,
-    right: 16,
+    bottom: Platform.OS === 'web' ? 16 : 30,
+    left: 10,
+    right: 10,
     zIndex: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 6,
   },
   glassButton: {
-    backgroundColor: 'rgba(18, 14, 26, 0.75)',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 18,
+    flex: 1,
+    maxWidth: 82,
+    backgroundColor: 'rgba(18, 14, 26, 0.85)',
+    paddingVertical: 8,
+    paddingHorizontal: 2,
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   btnIcon: {
-    fontSize: 20,
+    fontSize: 18,
   },
   btnLabel: {
-    fontSize: 11,
+    fontSize: 10,
+    fontWeight: '600',
     color: '#e2e8f0',
-    marginTop: 4,
+    marginTop: 3,
+    textAlign: 'center',
   },
   mainSpellBtn: {
     backgroundColor: '#ffd166',
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     justifyContent: 'center',
     alignItems: 'center',
-    boxShadow: '0 0 24px rgba(255, 209, 102, 0.7)' as any,
+    marginHorizontal: 2,
+    boxShadow: '0 0 20px rgba(255, 209, 102, 0.8)' as any,
   },
   spellBtnIcon: {
-    fontSize: 32,
+    fontSize: 26,
   },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: 16,
   },
   modalCard: {
     backgroundColor: '#1b1429',
     width: '100%',
     maxWidth: 380,
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: 22,
+    padding: 20,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 215, 0, 0.4)',
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: 'bold',
     color: '#ffd166',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   replyBox: {
     backgroundColor: 'rgba(255,255,255,0.08)',
-    padding: 14,
-    borderRadius: 14,
-    marginBottom: 16,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 14,
     borderLeftWidth: 3,
     borderLeftColor: '#ffd166',
   },
   replyText: {
     color: '#e2e8f0',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
     fontStyle: 'italic',
   },
   chatInput: {
     backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     color: '#fff',
+    fontSize: 14,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   modalBtnRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   modalActionBtn: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 14,
+    paddingVertical: 11,
+    borderRadius: 12,
     alignItems: 'center',
   },
   actionBtnText: {
     fontWeight: 'bold',
-    fontSize: 14,
+    fontSize: 13,
     color: '#0b0712',
   },
 });
