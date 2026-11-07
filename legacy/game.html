@@ -1,14 +1,13 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Expecto Patronum: Lord Boban ⚡ (3D WebGL Experience)</title>
+  <title>Hogwarts AR Ghostbusters ⚡</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
-  <script src="js/three.min.js"></script>
-  <script src="js/GLTFLoader.js"></script>
+  <!-- Pure Canvas 3D Augmented Reality Engine -->
   <style>
     * {
       box-sizing: border-box;
@@ -29,7 +28,7 @@
       color: #fff;
     }
 
-    /* AR Kamera Videosu */
+    /* Kamera Akışı (Video) */
     #cameraVideo {
       position: fixed;
       top: 0;
@@ -38,18 +37,19 @@
       height: 100vh;
       object-fit: cover;
       z-index: 1;
-      transform: scaleX(-1);
+      transform: scaleX(-1); /* Ayna modu gerekirse ayarlanır */
     }
 
+    /* Fallback Simüle Edilmiş Oda (Kamera İzni Yoksa) */
     #simulatedRoom {
       position: fixed;
       inset: 0;
-      background: radial-gradient(circle at center, #1b1627 0%, #08060e 100%);
+      background: radial-gradient(circle at center, #1b1329 0%, #08050d 100%);
       z-index: 1;
       display: none;
     }
 
-    /* WebGL Canvas */
+    /* Ana Oyun Canvas'ı (Hayaletler, Büyü Işınları, Parçacıklar) */
     #gameCanvas {
       position: fixed;
       inset: 0;
@@ -59,18 +59,7 @@
       pointer-events: auto;
     }
 
-    /* Flash Efekti */
-    #flashOverlay {
-      position: fixed;
-      inset: 0;
-      z-index: 40;
-      background: rgba(255, 255, 255, 0);
-      pointer-events: none;
-      transition: opacity 0.22s ease-out;
-      opacity: 0;
-    }
-
-    /* HUD UI */
+    /* UI Arayüz Katmanı */
     #hud {
       position: fixed;
       inset: 0;
@@ -79,20 +68,20 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 16px;
+      padding: 18px;
     }
 
+    /* Üst Bar: Skor, Can, Radar */
     .top-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(18, 14, 26, 0.72);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border: 1px solid rgba(255, 215, 0, 0.3);
+      background: rgba(15, 10, 25, 0.65);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 215, 0, 0.25);
       border-radius: 20px;
       padding: 10px 18px;
-      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
     }
 
     .title-area h2 {
@@ -103,951 +92,1543 @@
       text-shadow: 0 0 10px rgba(255, 209, 102, 0.5);
     }
 
-    .title-area p {
-      font-size: 11px;
-      color: #cbd5e1;
-      margin-top: 2px;
+    .score-badge {
+      font-size: 20px;
+      font-weight: 800;
+      color: #00f5d4;
+      text-shadow: 0 0 12px rgba(0, 245, 212, 0.6);
     }
 
-    .badge-patronus {
+    .ghost-radar {
+      font-size: 13px;
+      color: #ff758f;
       display: flex;
       align-items: center;
-      gap: 8px;
-      background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(200, 200, 230, 0.15));
-      border: 1px solid rgba(255, 215, 0, 0.5);
-      padding: 6px 14px;
-      border-radius: 14px;
-      font-weight: 700;
-      font-size: 13px;
-      color: #ffd166;
-      text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+      gap: 6px;
+      font-weight: 600;
     }
 
-    .bottom-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-    }
-
-    .hint-box {
-      background: rgba(18, 14, 26, 0.75);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      border-radius: 16px;
-      padding: 10px 16px;
-      font-size: 12px;
-      color: #e2e8f0;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-      max-width: 65%;
-      line-height: 1.4;
-    }
-
-    .spell-btn {
-      pointer-events: auto;
-      background: linear-gradient(135deg, #ffd166 0%, #e6a100 100%);
-      color: #0b0712;
-      border: none;
+    .radar-dot {
+      width: 8px;
+      height: 8px;
+      background: #ff0055;
       border-radius: 50%;
-      width: 72px;
-      height: 72px;
-      font-size: 32px;
+      box-shadow: 0 0 8px #ff0055;
+      animation: pulseRadar 1s infinite;
+    }
+
+    @keyframes pulseRadar {
+      0%, 100% { opacity: 0.3; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.3); }
+    }
+
+    /* Nişangah (Crosshair) */
+    .crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 52px;
+      height: 52px;
+      border: 2px dashed rgba(255, 215, 0, 0.45);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 15;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 0 25px rgba(255, 209, 102, 0.7);
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+
+    .crosshair::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: #ffd166;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #ffd166;
+    }
+
+    .crosshair.locked {
+      border-color: #ff0055;
+      transform: translate(-50%, -50%) scale(1.2);
+    }
+
+    /* Alt Kısım: Asa ve Büyü Butonları */
+    .bottom-bar {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .selected-spell-label {
+      font-family: 'Cinzel', serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffd166;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 4px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 215, 0, 0.3);
+      text-shadow: 0 0 8px rgba(255, 209, 102, 0.6);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+
+    /* Büyü Yuvaları (Spell Dock) */
+    .spell-dock {
+      display: flex;
+      gap: 10px;
+      background: rgba(10, 6, 18, 0.75);
+      backdrop-filter: blur(16px);
+      padding: 10px 14px;
+      border-radius: 28px;
+      border: 1px solid rgba(255, 215, 0, 0.3);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+      max-width: 100vw;
+      overflow-x: auto;
+    }
+
+    .spell-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 68px;
+      height: 68px;
+      border-radius: 20px;
+      border: 2px solid transparent;
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
       cursor: pointer;
-      transition: transform 0.15s ease;
+      font-family: 'Cinzel', serif;
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
     }
 
-    .spell-btn:active {
-      transform: scale(0.92);
+    .spell-btn .icon {
+      font-size: 22px;
+      line-height: 1;
+      margin-bottom: 4px;
     }
 
-    /* Modal */
+    .spell-btn .name {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    /* Büyü Renkleri & Aktif Durumlar */
+    .spell-btn.stupefy {
+      border-color: rgba(255, 42, 109, 0.4);
+    }
+    .spell-btn.stupefy.active, .spell-btn.stupefy:active {
+      background: radial-gradient(circle, #ff2a6d, #70002b);
+      border-color: #ff2a6d;
+      box-shadow: 0 0 20px #ff2a6d;
+      transform: scale(1.08);
+    }
+
+    .spell-btn.expelliarmus {
+      border-color: rgba(255, 123, 0, 0.4);
+    }
+    .spell-btn.expelliarmus.active, .spell-btn.expelliarmus:active {
+      background: radial-gradient(circle, #ff7b00, #8f3400);
+      border-color: #ff7b00;
+      box-shadow: 0 0 20px #ff7b00;
+      transform: scale(1.08);
+    }
+
+    .spell-btn.patronum {
+      border-color: rgba(0, 245, 212, 0.4);
+    }
+    .spell-btn.patronum.active, .spell-btn.patronum:active {
+      background: radial-gradient(circle, #00f5d4, #005f52);
+      border-color: #00f5d4;
+      box-shadow: 0 0 25px #00f5d4;
+      transform: scale(1.08);
+    }
+
+    .spell-btn.lumos {
+      border-color: rgba(255, 215, 0, 0.4);
+    }
+    .spell-btn.lumos.active, .spell-btn.lumos:active {
+      background: radial-gradient(circle, #ffd166, #806200);
+      border-color: #ffd166;
+      box-shadow: 0 0 20px #ffd166;
+      transform: scale(1.08);
+    }
+
+    .spell-btn.avada {
+      border-color: rgba(57, 255, 20, 0.4);
+    }
+    .spell-btn.avada.active, .spell-btn.avada:active {
+      background: radial-gradient(circle, #39ff14, #0b6100);
+      border-color: #39ff14;
+      box-shadow: 0 0 25px #39ff14;
+      transform: scale(1.08);
+    }
+
+    .spell-btn.leviosa {
+      border-color: rgba(247, 37, 133, 0.4);
+    }
+    .spell-btn.leviosa.active, .spell-btn.leviosa:active {
+      background: radial-gradient(circle, #f72585, #7209b7);
+      border-color: #f72585;
+      box-shadow: 0 0 25px #f72585;
+      transform: scale(1.08);
+    }
+
+    /* Kedi Rozeti */
+    .cat-badge {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #ffd166;
+      background: rgba(247, 37, 133, 0.25);
+      border: 1px solid rgba(255, 209, 102, 0.5);
+      padding: 6px 16px;
+      border-radius: 20px;
+      margin-bottom: 6px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 0 15px rgba(247, 37, 133, 0.5);
+      animation: catGlow 1.5s infinite alternate;
+    }
+
+    @keyframes catGlow {
+      from { box-shadow: 0 0 10px rgba(247, 37, 133, 0.4); }
+      to { box-shadow: 0 0 25px rgba(255, 209, 102, 0.8); }
+    }
+
+    /* Ekran Flaş Efektleri (Büyü Atıldığında) */
+    #flashOverlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      opacity: 0;
+      transition: opacity 0.15s ease-out;
+    }
+
+    /* Başlangıç / İzin Modalı */
     #startModal {
       position: fixed;
       inset: 0;
       z-index: 100;
-      background: rgba(8, 5, 13, 0.94);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      background: radial-gradient(circle, rgba(16, 9, 29, 0.95), #06030b);
       display: flex;
       flex-direction: column;
-      justify-content: center;
       align-items: center;
-      padding: 24px;
+      justify-content: center;
+      padding: 30px;
       text-align: center;
     }
 
     .modal-card {
-      background: linear-gradient(160deg, #1b1429 0%, #0f0a19 100%);
-      border: 1.5px solid rgba(255, 215, 0, 0.4);
-      border-radius: 28px;
-      padding: 32px 24px;
-      max-width: 400px;
+      max-width: 420px;
       width: 100%;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 209, 102, 0.2);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 215, 0, 0.3);
+      border-radius: 28px;
+      padding: 36px 26px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(255, 209, 102, 0.15);
     }
 
     .modal-card h1 {
       font-family: 'Cinzel', serif;
-      font-size: 24px;
+      font-size: 26px;
       color: #ffd166;
       margin-bottom: 12px;
-      letter-spacing: 2px;
+      text-shadow: 0 0 15px rgba(255, 209, 102, 0.5);
     }
 
     .modal-card p {
-      font-size: 14px;
-      color: #cbd5e1;
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.8);
       line-height: 1.6;
-      margin-bottom: 24px;
+      margin-bottom: 28px;
     }
 
-    .modal-btn {
-      background: linear-gradient(135deg, #ffd166 0%, #ffaa00 100%);
-      color: #0b0712;
+    .btn-start {
+      font-family: 'Cinzel', serif;
+      font-size: 17px;
+      font-weight: 700;
+      padding: 15px 36px;
+      border-radius: 999px;
       border: none;
-      border-radius: 18px;
-      padding: 16px 32px;
-      font-size: 16px;
-      font-weight: 800;
-      letter-spacing: 1px;
+      background: linear-gradient(135deg, #ffd166, #ff7b00);
+      color: #0b0714;
       cursor: pointer;
-      box-shadow: 0 4px 25px rgba(255, 209, 102, 0.6);
-      width: 100%;
+      box-shadow: 0 0 30px rgba(255, 209, 102, 0.6);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .btn-start:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 40px rgba(255, 209, 102, 0.9);
+    }
+
+    /* Asanın Ekranda Görünümü */
+    .wand-hud {
+      position: fixed;
+      bottom: -40px;
+      right: 10%;
+      width: 180px;
+      height: 260px;
+      pointer-events: none;
+      z-index: 12;
+      transform-origin: bottom center;
+      transition: transform 0.15s ease;
     }
   </style>
 </head>
 <body>
 
-  <!-- AR Kamera Akışı -->
+  <!-- Başlangıç / İzin Ekranı -->
+  <div id="startModal">
+    <div class="modal-card">
+      <div style="font-size: 48px; margin-bottom: 12px;">⚡ 👻 🪄</div>
+      <h1>Hogwarts AR Ghostbusters</h1>
+      <p>
+        The room is haunted by dark specters! Point your phone around the living room, switch your spells, and tap to cast your magic.
+      </p>
+      <button class="btn-start" id="startBtn">Draw Your Wand 🪄</button>
+    </div>
+  </div>
+
+  <!-- Canlı Kamera Akışı -->
   <video id="cameraVideo" playsinline autoplay muted></video>
   <div id="simulatedRoom"></div>
 
-  <!-- WebGL Canvas -->
+  <!-- Çizim Canvas'ı (Hayaletler + Işınlar) -->
   <canvas id="gameCanvas"></canvas>
 
+
+
+  <!-- Büyü Flaş Katmanı -->
   <div id="flashOverlay"></div>
 
-  <!-- HUD -->
+  <!-- Nişangah -->
+  <div class="crosshair" id="crosshair"></div>
+
+  <!-- HUD Arayüzü -->
   <div id="hud">
     <div class="top-bar">
       <div class="title-area">
-        <h2>⚡ EXPECTO PATRONUM</h2>
-        <p>Lord Boban (British Shorthair) 3D</p>
+        <h2>DEFENSE AGAINST THE DARK ARTS</h2>
+        <div class="ghost-radar">
+          <span class="radar-dot"></span>
+          <span id="ghostCountText">Active Specters: 3</span>
+        </div>
       </div>
-      <div id="catBadge" class="badge-patronus" style="display: none;">
-        <span>👑</span>
-        <span id="catTimer">18.0s</span>
+      <div class="score-badge">
+        <span id="scoreText">0</span> pts
       </div>
     </div>
 
     <div class="bottom-bar">
-      <div class="hint-box">
-        <strong id="statusText">✨ Asanı hazırla ve Patronus çağır!</strong><br>
-        <span>Ekrana dokunarak veya asaya basarak Lord Boban'ı çağır.</span>
+      <div class="cat-badge" id="catBadge">
+        <span>🐾 EXPECTO PATRONUM: Lord Boban Active (<span id="catTimer">10.0</span>s) 🛡️</span>
       </div>
-      <button class="spell-btn" id="wandBtn" title="Expecto Patronum">🪄</button>
-    </div>
-  </div>
 
-  <!-- Başlangıç Modalı -->
-  <div id="startModal">
-    <div class="modal-card">
-      <div style="font-size: 52px; margin-bottom: 12px;">👑🐾</div>
-      <h1>LORD BOBAN</h1>
-      <p>
-        Karanlık Ruhlar yaklaşıyor!<br>
-        Asanı çek, gümüş parçacıkların havada birleşerek Maşa'nın 
-        <strong>Lord Boban</strong>'ına dönüşmesini izle!
-      </p>
-      <button class="modal-btn" id="startBtn">ASANI ÇEK & BAŞLA ⚡</button>
+      <div class="selected-spell-label" id="spellLabel">EXPECTO PATRONUM 🐾</div>
+
+      <div class="spell-dock">
+        <!-- EXPECTO PATRONUM: OZZY / BOBAN ÇAĞIRICI (Öncelikli Büyü) -->
+        <button class="spell-btn patronum active" data-spell="patronum" style="min-width: 175px; height: 60px; padding: 0 22px;">
+          <span class="icon" style="font-size: 24px;">🐾</span>
+          <span class="name" style="font-size: 11px; letter-spacing: 1px;">Expecto Patronum</span>
+        </button>
+      </div>
     </div>
   </div>
 
   <script>
-    // --- SES SİSTEMİ (Web Audio API Synthesizer) ---
+    // --- SES SENTEZLEYİCİSİ (Web Audio API ile Büyü ve Hayalet Sesleri) ---
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
+
     function initAudio() {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (audioCtx.state === "suspended") {
-        audioCtx.resume();
-      }
+      if (!audioCtx) audioCtx = new AudioCtx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
     }
 
     function playSpellSound(type) {
       if (!audioCtx) return;
       const now = audioCtx.currentTime;
 
-      if (type === "patronum") {
+      if (type === 'stupefy') {
+        // Keskin Kırmızı Büyü Sesi
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(520, now);
-        osc.frequency.exponentialRampToValueAtTime(1100, now + 0.35);
-        osc.frequency.exponentialRampToValueAtTime(260, now + 1.5);
-
-        gain.gain.setValueAtTime(0.45, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.6);
-
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start(now);
-        osc.stop(now + 1.6);
-      } else {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = "triangle";
-        osc.frequency.setValueAtTime(880, now);
-        osc.frequency.exponentialRampToValueAtTime(220, now + 0.22);
-
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.exponentialRampToValueAtTime(120, now + 0.28);
         gain.gain.setValueAtTime(0.3, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
         osc.start(now);
-        osc.stop(now + 0.25);
+        osc.stop(now + 0.29);
+      } else if (type === 'expelliarmus') {
+        // Ateş / Yanma Sesi (Incendio)
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.exponentialRampToValueAtTime(70, now + 0.35);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.36);
+      } else if (type === 'patronum') {
+        // İlahi & Parlak Patronus Çanı
+        const osc = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc2.type = 'sine';
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.exponentialRampToValueAtTime(1040, now + 0.6);
+        osc2.frequency.setValueAtTime(784, now);
+        osc2.frequency.exponentialRampToValueAtTime(1568, now + 0.6);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
+        osc.connect(gain);
+        osc2.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc2.start(now);
+        osc.stop(now + 0.71);
+        osc2.stop(now + 0.71);
+
+        // Sevimli Kedi Miyavı (Ozzy / Boban)
+        setTimeout(() => {
+          if (!audioCtx) return;
+          const meowNow = audioCtx.currentTime;
+          const meowOsc = audioCtx.createOscillator();
+          const meowGain = audioCtx.createGain();
+          meowOsc.type = 'triangle';
+          meowOsc.frequency.setValueAtTime(560, meowNow);
+          meowOsc.frequency.exponentialRampToValueAtTime(760, meowNow + 0.14);
+          meowOsc.frequency.exponentialRampToValueAtTime(430, meowNow + 0.52);
+          meowGain.gain.setValueAtTime(0.01, meowNow);
+          meowGain.gain.linearRampToValueAtTime(0.28, meowNow + 0.08);
+          meowGain.gain.exponentialRampToValueAtTime(0.01, meowNow + 0.52);
+          meowOsc.connect(meowGain);
+          meowGain.connect(audioCtx.destination);
+          meowOsc.start(meowNow);
+          meowOsc.stop(meowNow + 0.53);
+        }, 180);
+      } else if (type === 'lumos') {
+        // Parlama çınlaması
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1200, now);
+        osc.frequency.exponentialRampToValueAtTime(400, now + 0.4);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.41);
+      } else if (type === 'avada') {
+        // Ölümcül Yeşil Lanet Sesi
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.5);
+        gain.gain.setValueAtTime(0.45, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.51);
+      } else if (type === 'leviosa') {
+        // Wingardium Leviosa: Büyülü yükselme ve kedi miyavı sentezi
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(450, now);
+        osc.frequency.exponentialRampToValueAtTime(900, now + 0.3);
+        osc.frequency.exponentialRampToValueAtTime(650, now + 0.6);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.61);
       }
     }
 
-    // --- AR KAMERA BAŞLATMA ---
-    const videoEl = document.getElementById("cameraVideo");
-    const simulatedRoom = document.getElementById("simulatedRoom");
+    function playGhostDeathSound() {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.exponentialRampToValueAtTime(60, now + 0.4);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.41);
+    }
+
+    // --- KAMERA & GYRO ENTEGRASYONU ---
+    const cameraVideo = document.getElementById('cameraVideo');
+    const simulatedRoom = document.getElementById('simulatedRoom');
 
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          video: { facingMode: { ideal: 'environment' } },
           audio: false
         });
-        videoEl.srcObject = stream;
-        videoEl.play();
+        cameraVideo.srcObject = stream;
+        cameraVideo.play();
       } catch (err) {
-        console.warn("Kamera açılamadı, simüle oda devrede:", err);
-        simulatedRoom.style.display = "block";
+        console.warn("Camera could not be accessed, using fallback dark chamber:", err);
+        simulatedRoom.style.display = 'block';
       }
     }
 
-    // --- THREE.JS SAHNE KURULUMU ---
-    const canvas = document.getElementById("gameCanvas");
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x000000, 0);
+    // AR Jiroskop / Ekran Döndürme Verileri
+    let camYaw = 0;   // Sağa - Sola açı
+    let camPitch = 0; // Yukarı - Aşağı açı
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 4, 75);
-    camera.lookAt(0, -6, 0);
-
-    // Kutsal Patronus Aydınlatması
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
-    scene.add(ambientLight);
-
-    const dirLight = new THREE.DirectionalLight(0xfff8f0, 1.6);
-    dirLight.position.set(20, 40, 30);
-    scene.add(dirLight);
-
-    const rimLight = new THREE.PointLight(0xddeeff, 3.0, 120);
-    rimLight.position.set(-20, 25, -20);
-    scene.add(rimLight);
-
-    window.addEventListener("resize", () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+    // Telefonun Jiroskop sensörü
+    window.addEventListener('deviceorientation', (e) => {
+      if (e.alpha !== null && e.beta !== null) {
+        camYaw = (e.alpha * Math.PI) / 180;
+        camPitch = (e.beta * Math.PI) / 180;
+      }
     });
 
-    // --- RELATIVE GYRO & POINTER DÖNÜŞÜ (MERKEZİ ASLA KAYBETMEZ) ---
-    let camYaw = 0, camPitch = 0;
-    let gyroYaw = 0, gyroPitch = 0;
-    let dragYaw = 0, dragPitch = 0;
-    let baseAlpha = null, baseBeta = null;
-
-    if (window.DeviceOrientationEvent) {
-      window.addEventListener("deviceorientation", (e) => {
-        if (e.alpha !== null && e.beta !== null) {
-          if (baseAlpha === null) {
-            baseAlpha = e.alpha;
-            baseBeta = e.beta;
-          }
-          let dAlpha = e.alpha - baseAlpha;
-          while (dAlpha > 180) dAlpha -= 360;
-          while (dAlpha < -180) dAlpha += 360;
-
-          let dBeta = e.beta - baseBeta;
-          gyroYaw = (dAlpha * Math.PI) / 180 * 0.7;
-          gyroPitch = (dBeta * Math.PI) / 180 * 0.45;
-          gyroPitch = Math.max(-0.45, Math.min(0.45, gyroPitch));
-        }
-      });
-    }
-
+    // Bilgisayarda / Dokunmatik ekranda fareyle / sürükleyerek etrafa bakma (Fallback)
     let isDragging = false;
-    let lastPointerX = 0, lastPointerY = 0;
-
-    window.addEventListener("pointerdown", (e) => {
-      if (e.clientY < window.innerHeight - 100) {
-        isDragging = true;
-        lastPointerX = e.clientX;
-        lastPointerY = e.clientY;
-      }
+    let startX = 0, startY = 0;
+    window.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('#hud') || e.target.closest('#startModal')) return;
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
     });
 
-    window.addEventListener("pointermove", (e) => {
+    window.addEventListener('pointermove', (e) => {
       if (!isDragging) return;
-      const dx = e.clientX - lastPointerX;
-      const dy = e.clientY - lastPointerY;
-      lastPointerX = e.clientX;
-      lastPointerY = e.clientY;
-      dragYaw -= dx * 0.0035;
-      dragPitch -= dy * 0.0035;
-      dragPitch = Math.max(-0.45, Math.min(0.45, dragPitch));
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      startX = e.clientX;
+      startY = e.clientY;
+      camYaw -= dx * 0.005;
+      camPitch += dy * 0.005;
     });
 
-    window.addEventListener("pointerup", () => { isDragging = false; });
-    window.addEventListener("pointercancel", () => { isDragging = false; });
+    window.addEventListener('pointerup', () => { isDragging = false; });
 
-    // --- YUMUŞAK PARÇACIK DOKUSU (Glow Sparkle Texture) ---
-    function createGlowTexture() {
-      const c = document.createElement("canvas");
-      c.width = 64; c.height = 64;
-      const ctx = c.getContext("2d");
-      const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-      grad.addColorStop(0, "rgba(255, 255, 255, 1.0)");
-      grad.addColorStop(0.35, "rgba(235, 245, 255, 0.9)");
-      grad.addColorStop(0.7, "rgba(180, 210, 245, 0.35)");
-      grad.addColorStop(1.0, "rgba(140, 180, 240, 0.0)");
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(32, 32, 32, 0, Math.PI * 2);
-      ctx.fill();
-      return new THREE.CanvasTexture(c);
+    // --- OYUN CANVAS & NESNELER ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const flashOverlay = document.getElementById('flashOverlay');
+    const scoreText = document.getElementById('scoreText');
+    const ghostCountText = document.getElementById('ghostCountText');
+    const crosshair = document.getElementById('crosshair');
+
+    let width, height;
+    function resizeCanvas() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
     }
-    const glowTex = createGlowTexture();
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
 
-    // --- ZEMİN KONTAK GÖLGESİ & KUTSAL IŞIK HALKASI ---
-    const groundGroup = new THREE.Group();
-    groundGroup.position.set(0, -16.0, 0);
+    let score = 0;
+    let selectedSpell = 'patronum';
 
-    // 1. Zemin Işık Havuzu (Silver Patronus Ground Pool)
-    const puddleGeo = new THREE.PlaneGeometry(42, 54);
-    const puddleTex = (() => {
-      const c = document.createElement("canvas");
-      c.width = 128; c.height = 128;
-      const ctx = c.getContext("2d");
-      const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-      g.addColorStop(0, "rgba(225, 240, 255, 0.6)");
-      g.addColorStop(0.5, "rgba(180, 210, 255, 0.25)");
-      g.addColorStop(1.0, "rgba(0, 0, 0, 0)");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, 128, 128);
-      return new THREE.CanvasTexture(c);
-    })();
-    const puddleMesh = new THREE.Mesh(
-      puddleGeo,
-      new THREE.MeshBasicMaterial({ map: puddleTex, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })
-    );
-    puddleMesh.rotation.x = -Math.PI * 0.5;
-    groundGroup.add(puddleMesh);
+    // Büyü Tanımları: Kullanıcının isteğiyle sadece Patronus aktif
+    const SPELLS = {
+      patronum: {
+        name: 'Expecto Patronum 🐾 (Lord Boban)',
+        color: '#a2d2ff',
+        lightColor: 'rgba(162, 210, 255, 0.65)',
+        damage: 150,
+        speed: 35,
+        flash: 'rgba(162, 210, 255, 0.55)'
+      }
+    };
 
-    // 2. Kontak Gölgesi (Contact Shadow)
-    const shadowTex = (() => {
-      const c = document.createElement("canvas");
-      c.width = 128; c.height = 128;
-      const ctx = c.getContext("2d");
-      const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 60);
-      g.addColorStop(0, "rgba(0, 0, 0, 0.68)");
-      g.addColorStop(0.6, "rgba(0, 0, 0, 0.22)");
-      g.addColorStop(1.0, "rgba(0, 0, 0, 0)");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, 128, 128);
-      return new THREE.CanvasTexture(c);
-    })();
-    const shadowMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(24, 38),
-      new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, opacity: 0.7, depthWrite: false })
-    );
-    shadowMesh.rotation.x = -Math.PI * 0.5;
-    shadowMesh.position.y = 0.05;
-    groundGroup.add(shadowMesh);
+    // Büyü Seçimi Butonları
+    document.querySelectorAll('.spell-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.spell-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedSpell = btn.dataset.spell;
+        document.getElementById('spellLabel').textContent = SPELLS[selectedSpell].name;
+        if (navigator.vibrate) navigator.vibrate(20);
 
-    groundGroup.visible = false;
-    scene.add(groundGroup);
-
-    // --- 3D BRITISH SHORTHAIR MODELİ VE KEHRİBAR GÖZLERİ ---
-    const PARTICLE_COUNT = 24000;
-    const catScale = 45.0;
-
-    let catScene = null;
-    let catBones = {};
-    let catRestRot = {};
-    let catTargetVertices = [];
-    let isGlbLoaded = false;
-
-    // Boban'ın Çarpıcı Kehribar / Altın Gözleri (3D Amber Eyes)
-    function createAmberEye(side) {
-      const eyeGroup = new THREE.Group();
-
-      // 1. Parlak Kehribar İris Küresi
-      const irisGeo = new THREE.SphereGeometry(1.05, 16, 16);
-      const irisMat = new THREE.MeshBasicMaterial({ color: 0xffb703 });
-      const irisMesh = new THREE.Mesh(irisGeo, irisMat);
-      eyeGroup.add(irisMesh);
-
-      // 2. Belirgin Dikey Siyah Göz Bebeği (Pupil)
-      const pupilGeo = new THREE.BoxGeometry(0.32, 1.45, 0.5);
-      const pupilMat = new THREE.MeshBasicMaterial({ color: 0x050505 });
-      const pupilMesh = new THREE.Mesh(pupilGeo, pupilMat);
-      pupilMesh.position.z = 0.88;
-      eyeGroup.add(pupilMesh);
-
-      // 3. Işıltılı Beyaz Göz Parıltısı (White Glint)
-      const glintGeo = new THREE.SphereGeometry(0.3, 8, 8);
-      const glintMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-      const glintMesh = new THREE.Mesh(glintGeo, glintMat);
-      glintMesh.position.set(0.32, 0.35, 0.95);
-      eyeGroup.add(glintMesh);
-
-      // 4. Kutsal Kehribar Bakış Işığı
-      const eyeLight = new THREE.PointLight(0xffb703, 1.5, 16);
-      eyeLight.position.set(0, 0, 2);
-      eyeGroup.add(eyeLight);
-
-      // Baş kemiğine ve göz yuvalarına göre tam pozisyon
-      eyeGroup.position.set(side * 1.85, 16.0, 13.5);
-      return eyeGroup;
-    }
-
-    // GLB Yükleme Başlat
-    const gltfLoader = new THREE.GLTFLoader();
-    gltfLoader.load("../public/models/cat/source/Cat.glb", (gltf) => {
-      catScene = gltf.scene;
-      catScene.scale.set(catScale, catScale, catScale);
-      catScene.position.set(0, -16.0, 0);
-
-      catScene.traverse((child) => {
-        if (child.isBone) {
-          catBones[child.name] = child;
-          catRestRot[child.name] = child.rotation.clone();
-        }
-        if (child.isMesh) {
-          child.castShadow = true;
-          // Kutsal Patronus Işıltısı ve British Shorthair Gri Kürk Ayarı
-          if (child.material) {
-            child.material.roughness = 0.65;
-            child.material.metalness = 0.08;
-            child.material.side = THREE.DoubleSide;
-            // Hafif kutsal gümüşi yüzey aurası (Fresnel Sheen)
-            child.material.emissive = new THREE.Color(0xddeeff);
-            child.material.emissiveIntensity = 0.38;
-          }
-
-          // Modelin Yüzeyinden Hedef Mıknatıs Parçacık Koordinatlarını Örnekle
-          const geom = child.geometry;
-          if (geom && geom.attributes && geom.attributes.position && geom.index) {
-            const posAttr = geom.attributes.position;
-            const idxAttr = geom.index;
-            for (let i = 0; i < idxAttr.count; i += 3) {
-              const a = idxAttr.getX(i);
-              const b = idxAttr.getX(i + 1);
-              const c = idxAttr.getX(i + 2);
-
-              const vA = new THREE.Vector3().fromBufferAttribute(posAttr, a).multiplyScalar(catScale);
-              const vB = new THREE.Vector3().fromBufferAttribute(posAttr, b).multiplyScalar(catScale);
-              const vC = new THREE.Vector3().fromBufferAttribute(posAttr, c).multiplyScalar(catScale);
-
-              for (let s = 0; s < 8; s++) {
-                const r1 = Math.random();
-                const r2 = Math.random();
-                const sqrtR1 = Math.sqrt(r1);
-                const u = 1 - sqrtR1;
-                const v = r2 * sqrtR1;
-                const w = 1 - u - v;
-
-                const pt = new THREE.Vector3()
-                  .addScaledVector(vA, u)
-                  .addScaledVector(vB, v)
-                  .addScaledVector(vC, w);
-                catTargetVertices.push(pt);
-              }
-            }
-          }
+        // EXPECTO PATRONUM butonuna basıldığı an OZZY/BOBAN'ı doğrudan çağır!
+        if (selectedSpell === 'patronum') {
+          initAudio();
+          playSpellSound('patronum');
+          activeCat = new BritishShorthairPatronus();
         }
       });
-
-      // Kehribar Gözleri Modele Ekle (Gözler Artık Kristal Gibi Net!)
-      const leftEye = createAmberEye(-1);
-      const rightEye = createAmberEye(1);
-      catScene.add(leftEye);
-      catScene.add(rightEye);
-
-      // Kutsal Altın Taç (👑 Lord Boban Halosu)
-      const haloGeo = new THREE.TorusGeometry(3.6, 0.45, 16, 40);
-      const haloMat = new THREE.MeshBasicMaterial({ color: 0xffd166 });
-      const haloMesh = new THREE.Mesh(haloGeo, haloMat);
-      haloMesh.rotation.x = Math.PI * 0.42;
-      haloMesh.position.set(0, 19.5, 9.5);
-      haloMesh.name = "royalHalo";
-      catScene.add(haloMesh);
-
-      // Göğüsten Yayılan İlahi Beyaz Işık (Patronus Core Light)
-      const coreLight = new THREE.PointLight(0xffffff, 2.8, 50);
-      coreLight.position.set(0, 10, 4);
-      catScene.add(coreLight);
-
-      catScene.visible = false;
-      scene.add(catScene);
-      isGlbLoaded = true;
-      console.log("Cat GLB Loaded! Target points for magnetic assembly:", catTargetVertices.length);
     });
 
-    // --- 24.000 PARÇACIKLI MIKNATIS (CONVERGENCE) SİSTEMİ ---
-    const swarmGeo = new THREE.BufferGeometry();
-    const swarmPos = new Float32Array(PARTICLE_COUNT * 3);
-    const swarmCol = new Float32Array(PARTICLE_COUNT * 3);
-
-    const swarmVortexPos = [];
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const r = 20 + Math.random() * 45;
-      const y = (Math.random() - 0.5) * 40;
-      swarmVortexPos.push({
-        angle,
-        r,
-        y,
-        speed: 0.045 + Math.random() * 0.06
-      });
-
-      // Gümüş-Beyaz Patronus Renkleri
-      const shade = 0.88 + Math.random() * 0.12;
-      swarmCol[i * 3] = shade;
-      swarmCol[i * 3 + 1] = shade * 0.98;
-      swarmCol[i * 3 + 2] = 1.0;
-    }
-
-    swarmGeo.setAttribute("position", new THREE.BufferAttribute(swarmPos, 3));
-    swarmGeo.setAttribute("color", new THREE.BufferAttribute(swarmCol, 3));
-
-    const swarmMat = new THREE.PointsMaterial({
-      size: 2.8,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.9,
-      map: glowTex,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false
-    });
-
-    const swarmPoints = new THREE.Points(swarmGeo, swarmMat);
-    swarmPoints.visible = false;
-    scene.add(swarmPoints);
-
-    // --- TAM GÖVDESİNDEN ÇIKAN VE YAVAŞÇA YÜKSELEN KUTSAL PARÇACIKLAR (SURFACE EMISSION) ---
-    const SURFACE_PARTICLE_COUNT = 240;
-    const surfaceGeo = new THREE.BufferGeometry();
-    const surfacePositions = new Float32Array(SURFACE_PARTICLE_COUNT * 3);
-    const surfaceColors = new Float32Array(SURFACE_PARTICLE_COUNT * 3);
-
-    const surfaceParticleList = [];
-    for (let i = 0; i < SURFACE_PARTICLE_COUNT; i++) {
-      surfacePositions[i * 3 + 1] = -9999; // Başlangıçta gizli
-      surfaceParticleList.push({
-        active: false,
-        x: 0, y: -9999, z: 0,
-        vx: 0, vy: 0, vz: 0,
-        age: 0,
-        life: 2.5 + Math.random() * 1.5,
-        phase: Math.random() * 10
-      });
-      surfaceColors[i * 3] = 0.92;
-      surfaceColors[i * 3 + 1] = 0.96;
-      surfaceColors[i * 3 + 2] = 1.0;
-    }
-
-    surfaceGeo.setAttribute("position", new THREE.BufferAttribute(surfacePositions, 3));
-    surfaceGeo.setAttribute("color", new THREE.BufferAttribute(surfaceColors, 3));
-
-    const surfaceMat = new THREE.PointsMaterial({
-      size: 3.6,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.85,
-      map: glowTex,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false
-    });
-    const surfaceSystem = new THREE.Points(surfaceGeo, surfaceMat);
-    surfaceSystem.visible = false;
-    scene.add(surfaceSystem);
-
-    function spawnSurfaceParticle(index) {
-      if (catTargetVertices.length === 0) return;
-      const p = surfaceParticleList[index];
-      // Kedinin 3D yüzeyinden rastgele bir nokta seç (tam gövde, sırt, omuz, bacak, kafa)
-      const v = catTargetVertices[Math.floor(Math.random() * catTargetVertices.length)];
-
-      // Kedinin dünya koordinatına ve yönelme açısına çevir
-      const cosR = Math.cos(catRotY);
-      const sinR = Math.sin(catRotY);
-      const wx = catPos.x + v.x * cosR + v.z * sinR;
-      const wy = catPos.y + v.y;
-      const wz = catPos.z - v.x * sinR + v.z * cosR;
-
-      p.active = true;
-      p.x = wx;
-      p.y = wy;
-      p.z = wz;
-      // Çok yavaş, ağırbaşlı ve asil yükselme hızı
-      p.vx = (Math.random() - 0.5) * 0.018;
-      p.vy = 0.045 + Math.random() * 0.035; // Çok yavaş ve süzülen buhar
-      p.vz = (Math.random() - 0.5) * 0.018;
-      p.age = 0;
-      p.life = 2.5 + Math.random() * 1.5; // Uzun, sakin ömür
-    }
-
-    // --- 3D HAYALETLER (GHOSTS) ---
-    class Ghost3D {
+    // --- HAYALETLER (GHOSTS) ---
+    class Ghost {
       constructor() {
-        this.theta = Math.random() * Math.PI * 2;
-        this.phi = (Math.random() - 0.5) * 0.7;
-        this.dist = 85 + Math.random() * 45;
-        this.isDying = false;
-        this.alpha = 0.8;
-
-        const geo = new THREE.SphereGeometry(5.5, 16, 16);
-        const mat = new THREE.MeshBasicMaterial({
-          color: Math.random() > 0.5 ? 0x00f5d4 : 0xff758f,
-          transparent: true,
-          opacity: 0.8
-        });
-        this.mesh = new THREE.Mesh(geo, mat);
-        scene.add(this.mesh);
-        this.updatePosition();
-      }
-
-      updatePosition() {
-        this.mesh.position.set(
-          this.dist * Math.cos(this.phi) * Math.sin(this.theta),
-          this.dist * Math.sin(this.phi),
-          this.dist * Math.cos(this.phi) * Math.cos(this.theta)
-        );
-      }
-
-      update() {
-        this.theta += 0.007;
-        this.phi += Math.sin(this.theta * 2) * 0.002;
-        this.updatePosition();
-
-        if (this.isDying) {
-          this.alpha = Math.max(0, this.alpha - 0.08);
-          this.mesh.material.opacity = this.alpha;
-          if (this.alpha <= 0) this.reset();
-        }
+        this.reset();
       }
 
       reset() {
-        this.theta = Math.random() * Math.PI * 2;
-        this.phi = (Math.random() - 0.5) * 0.7;
-        this.alpha = 0.8;
+        // 3D Küresel Koordinatlar (Salonda 360 derece etrafımızda konumlanırlar)
+        this.theta = Math.random() * Math.PI * 2; // Yatay açı
+        this.phi = (Math.random() - 0.5) * 1.2;  // Dikey açı
+        this.distance = 400 + Math.random() * 300; // Mesafesi
+
+        this.maxHealth = 100;
+        this.health = this.maxHealth;
+        this.type = Math.random() > 0.4 ? 'slimer' : (Math.random() > 0.5 ? 'dementor' : 'pumpkin');
+        this.floatOffset = Math.random() * 100;
+        this.alpha = 0.85;
         this.isDying = false;
-        this.mesh.material.opacity = this.alpha;
-        this.updatePosition();
+        this.deathTimer = 0;
+      }
+
+      update() {
+        // Yavaşça süzülme hareketi
+        this.floatOffset += 0.04;
+        this.theta += 0.003; // Salon etrafında yavaşça döner
+
+        if (this.isDying) {
+          this.deathTimer++;
+          this.alpha = Math.max(0, 1 - this.deathTimer / 25);
+          if (this.alpha <= 0) {
+            this.reset();
+          }
+        }
+      }
+
+      // Ekrana İzdüşümü (3D -> 2D Ekran Konumu)
+      getScreenPosition() {
+        // Kamera açısına göre fark hesapla
+        let relTheta = this.theta - camYaw;
+        while (relTheta > Math.PI) relTheta -= Math.PI * 2;
+        while (relTheta < -Math.PI) relTheta += Math.PI * 2;
+
+        let relPhi = this.phi - camPitch;
+
+        // Görüş alanı (FOV) sınırları içinde mi?
+        const fov = 1.3;
+        if (Math.abs(relTheta) > fov) return null; // Arkada kalıyor
+
+        const screenX = width / 2 + (relTheta / fov) * (width * 0.9);
+        const screenY = height / 2 + (relPhi / fov) * (height * 0.9) + Math.sin(this.floatOffset) * 14;
+        const scale = Math.max(0.4, 600 / this.distance);
+
+        return { x: screenX, y: screenY, scale: scale };
+      }
+
+      draw() {
+        const pos = this.getScreenPosition();
+        if (!pos) return;
+
+        ctx.save();
+        ctx.translate(pos.x, pos.y);
+        ctx.scale(pos.scale, pos.scale);
+        ctx.globalAlpha = this.alpha;
+
+        const pulse = Math.sin(this.floatOffset) * 5;
+
+        if (this.type === 'slimer') {
+          // Neon Yeşil Hayalet (Slimer Tarzı)
+          ctx.shadowBlur = 35;
+          ctx.shadowColor = '#00f5d4';
+
+          ctx.fillStyle = 'rgba(0, 245, 212, 0.4)';
+          ctx.beginPath();
+          ctx.arc(0, -10 + pulse, 38, Math.PI, 0, false);
+          ctx.bezierCurveTo(42, 30, 25, 45, 0, 50 + pulse);
+          ctx.bezierCurveTo(-25, 45, -42, 30, -38, -10 + pulse);
+          ctx.fill();
+
+          // Gözler
+          ctx.fillStyle = '#fff';
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = '#fff';
+          ctx.beginPath();
+          ctx.arc(-14, -8 + pulse, 9, 0, Math.PI * 2);
+          ctx.arc(14, -8 + pulse, 9, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#06030b';
+          ctx.beginPath();
+          ctx.arc(-13, -8 + pulse, 4.5, 0, Math.PI * 2);
+          ctx.arc(15, -8 + pulse, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Sinsi Gülümseme
+          ctx.strokeStyle = '#06030b';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(0, 14 + pulse, 14, 0.2, Math.PI - 0.2);
+          ctx.stroke();
+
+        } else if (this.type === 'dementor') {
+          // Ruh Emici / Karanlık Hayalet
+          ctx.shadowBlur = 45;
+          ctx.shadowColor = '#b5179e';
+
+          ctx.fillStyle = 'rgba(114, 9, 183, 0.55)';
+          ctx.beginPath();
+          ctx.arc(0, -15 + pulse, 42, Math.PI, 0, false);
+          ctx.lineTo(38, 55 + pulse);
+          ctx.lineTo(15, 40 + pulse);
+          ctx.lineTo(0, 60 + pulse);
+          ctx.lineTo(-18, 40 + pulse);
+          ctx.lineTo(-38, 55 + pulse);
+          ctx.closePath();
+          ctx.fill();
+
+          // Parlayan Kırmızı Gözler
+          ctx.fillStyle = '#ff0055';
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = '#ff0055';
+          ctx.beginPath();
+          ctx.arc(-14, -12 + pulse, 6, 0, Math.PI * 2);
+          ctx.arc(14, -12 + pulse, 6, 0, Math.PI * 2);
+          ctx.fill();
+
+        } else {
+          // Balkabağı Başlı Cadı Hayaleti 🎃
+          ctx.shadowBlur = 35;
+          ctx.shadowColor = '#ff7b00';
+
+          ctx.fillStyle = 'rgba(255, 123, 0, 0.85)';
+          ctx.beginPath();
+          ctx.ellipse(0, 0 + pulse, 36, 30, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Oyulmuş Ağız ve Gözler
+          ctx.fillStyle = '#000';
+          ctx.beginPath();
+          ctx.moveTo(-16, -6 + pulse);
+          ctx.lineTo(-8, -14 + pulse);
+          ctx.lineTo(0, -6 + pulse);
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.moveTo(0, -6 + pulse);
+          ctx.lineTo(8, -14 + pulse);
+          ctx.lineTo(16, -6 + pulse);
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(0, 10 + pulse, 12, 0, Math.PI);
+          ctx.fill();
+        }
+
+        // Can Barı
+        if (this.health < this.maxHealth) {
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+          ctx.fillRect(-35, -55 + pulse, 70, 7);
+          ctx.fillStyle = this.health > 40 ? '#00f5d4' : '#ff0055';
+          ctx.fillRect(-35, -55 + pulse, (this.health / this.maxHealth) * 70, 7);
+        }
+
+        ctx.restore();
       }
     }
 
-    const ghosts = [new Ghost3D(), new Ghost3D(), new Ghost3D()];
+    // Hayaletleri Başlat (Salonda 4 adet)
+    const ghosts = [new Ghost(), new Ghost(), new Ghost(), new Ghost()];
 
-    // --- EXPECTO PATRONUM KONTROLÜ (STATE MACHINE) ---
-    let patronusState = 'IDLE';
-    let patronusStartTime = 0;
-    const DURATION_ACTIVE = 18000;
+    // --- BÜYÜ IŞINI & PARÇACIKLAR ---
+    const spellBeams = [];
+    const particles = [];
 
-    let catPos = new THREE.Vector3(0, -16.0, 0);
-    let catTargetPos = new THREE.Vector3(0, -16.0, 0);
-    let catSpeed = 0.20;
-    let catRotY = 0;
+    class SpellBeam {
+      constructor(targetX, targetY, spellKey) {
+        this.startX = width * 0.85;  // Asanın sağ alttaki ucu
+        this.startY = height + 10;
+        this.targetX = targetX;
+        this.targetY = targetY;
+        this.currentX = this.startX;
+        this.currentY = this.startY;
+        this.spell = SPELLS[spellKey];
+        this.progress = 0;
+        this.isDone = false;
+      }
 
-    function pickNewCatDestination() {
-      catTargetPos.x = (Math.random() - 0.5) * 55;
-      catTargetPos.z = (Math.random() - 0.5) * 45;
+      update() {
+        this.progress += 0.08;
+        this.currentX = this.startX + (this.targetX - this.startX) * this.progress;
+        this.currentY = this.startY + (this.targetY - this.startY) * this.progress;
+
+        // Işın boyu kıvılcım parçacıkları saç
+        for (let i = 0; i < 3; i++) {
+          particles.push(new Particle(
+            this.currentX + (Math.random() - 0.5) * 15,
+            this.currentY + (Math.random() - 0.5) * 15,
+            this.spell.color
+          ));
+        }
+
+        if (this.progress >= 1) {
+          this.isDone = true;
+          this.onHit();
+        }
+      }
+
+      onHit() {
+        // Hedefte büyük sihirli patlama oluştur
+        for (let i = 0; i < 30; i++) {
+          particles.push(new Particle(this.targetX, this.targetY, this.spell.color, true));
+        }
+
+        // Hayalet vuruldu mu kontrol et
+        ghosts.forEach(ghost => {
+          const pos = ghost.getScreenPosition();
+          if (!pos || ghost.isDying) return;
+
+          const dist = Math.hypot(this.targetX - pos.x, this.targetY - pos.y);
+          if (dist < 75 * pos.scale) {
+            ghost.health -= this.spell.damage;
+            if (navigator.vibrate) navigator.vibrate(40);
+
+            if (ghost.health <= 0) {
+              ghost.isDying = true;
+              playGhostDeathSound();
+              score += 150;
+              scoreText.textContent = score;
+            } else {
+              score += 25;
+              scoreText.textContent = score;
+            }
+          }
+        });
+      }
+
+      draw() {
+        ctx.save();
+        ctx.strokeStyle = this.spell.color;
+        ctx.lineWidth = 6;
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = this.spell.color;
+
+        // Zikzaklı / Yıldırım Büyü Hattı
+        ctx.beginPath();
+        ctx.moveTo(this.startX, this.startY);
+        const steps = 6;
+        for (let i = 1; i <= steps; i++) {
+          const t = (i / steps) * this.progress;
+          const x = this.startX + (this.targetX - this.startX) * t + (Math.random() - 0.5) * 12;
+          const y = this.startY + (this.targetY - this.startY) * t + (Math.random() - 0.5) * 12;
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Çekirdek Beyaz Işık
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        ctx.restore();
+      }
     }
 
-    function castExpectoPatronum() {
-      initAudio();
-      playSpellSound("patronum");
-
-      const flash = document.getElementById("flashOverlay");
-      flash.style.background = "rgba(255, 255, 255, 0.45)";
-      flash.style.opacity = "1";
-      setTimeout(() => { flash.style.opacity = "0"; }, 140);
-
-      patronusState = 'SWARM';
-      patronusStartTime = Date.now();
-
-      swarmPoints.visible = true;
-      if (catScene) catScene.visible = false;
-      groundGroup.visible = false;
-      surfaceSystem.visible = false;
-
-      ghosts.forEach(g => { g.isDying = true; g.alpha = 0; });
-
-      document.getElementById("catBadge").style.display = "flex";
-      document.getElementById("statusText").innerHTML = "✨ <strong>PARÇACIKLAR TOPLANIYOR:</strong> Lord Boban Oluşuyor...";
-      document.getElementById("statusText").style.color = "#00f5d4";
-    }
-
-    // --- PROSEDÜREL 4 AYAKLI YÜRÜYÜŞ ANİMASYONU ---
-    function updateCatProceduralAnimation(time) {
-      if (!catBones["Thigh_FR"]) return;
-
-      const walkSpeed = 4.8;
-      const legAmp = 0.34;
-      const stepCycle = time * walkSpeed;
-
-      const swingR = Math.sin(stepCycle);
-      const swingL = Math.sin(stepCycle + Math.PI);
-
-      // Ön Bacaklar
-      if (catBones["Thigh_FR"]) {
-        catBones["Thigh_FR"].rotation.z = catRestRot["Thigh_FR"].z + swingR * legAmp;
-        if (catBones["Knee_FR"]) catBones["Knee_FR"].rotation.z = catRestRot["Knee_FR"].z + Math.max(0, -swingR) * 0.4;
-      }
-      if (catBones["Thigh_FL"]) {
-        catBones["Thigh_FL"].rotation.z = catRestRot["Thigh_FL"].z + swingL * legAmp;
-        if (catBones["Knee_FL"]) catBones["Knee_FL"].rotation.z = catRestRot["Knee_FL"].z + Math.max(0, -swingL) * 0.4;
+    class Particle {
+      constructor(x, y, color, isExplosion = false) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        const speed = isExplosion ? 3 + Math.random() * 6 : 1 + Math.random() * 2;
+        const angle = Math.random() * Math.PI * 2;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.alpha = 1;
+        this.size = 3 + Math.random() * 3.5;
       }
 
-      // Arka Bacaklar
-      if (catBones["Thigh_BR"]) {
-        catBones["Thigh_BR"].rotation.x = catRestRot["Thigh_BR"].x + swingL * legAmp;
-        if (catBones["Knee_BR"]) catBones["Knee_BR"].rotation.x = catRestRot["Knee_BR"].x + Math.max(0, swingL) * 0.35;
-      }
-      if (catBones["Thigh_BL"]) {
-        catBones["Thigh_BL"].rotation.x = catRestRot["Thigh_BL"].x + swingR * legAmp;
-        if (catBones["Knee_BL"]) catBones["Knee_BL"].rotation.x = catRestRot["Knee_BL"].x + Math.max(0, swingR) * 0.35;
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.alpha -= 0.035;
       }
 
-      // Doğal Kuyruk Dalgası
-      if (catBones["Tail_1"]) catBones["Tail_1"].rotation.y = catRestRot["Tail_1"].y + Math.sin(time * 2.2) * 0.25;
-      if (catBones["Tail_2"]) catBones["Tail_2"].rotation.y = catRestRot["Tail_2"].y + Math.sin(time * 2.2 - 0.6) * 0.35;
-      if (catBones["Tail_3"]) catBones["Tail_3"].rotation.y = catRestRot["Tail_3"].y + Math.sin(time * 2.2 - 1.2) * 0.45;
-
-      // Omurga Yaylanması & Nefes
-      if (catBones["Torso"]) {
-        catBones["Torso"].rotation.z = catRestRot["Torso"].z + Math.cos(time * 2.0) * 0.04;
-        catBones["Torso"].position.y = Math.abs(Math.sin(stepCycle)) * 0.008;
-      }
-      if (catBones["Head"]) {
-        catBones["Head"].rotation.z = catRestRot["Head"].z + Math.sin(stepCycle) * 0.05;
-      }
-
-      // Altın Taç Dönüşü
-      const halo = catScene.getObjectByName("royalHalo");
-      if (halo) {
-        halo.rotation.z += 0.035;
-        halo.position.y = 19.5 + Math.sin(time * 2.5) * 0.8;
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.alpha);
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
       }
     }
 
-    // --- RENDER & ANİMASYON DÖNGÜSÜ ---
-    let clock = new THREE.Clock();
+    // --- IŞIKLI KEDİ AYAK İZLERİ (LIGHT FOOTPRINTS) ---
+    class LightFootprint {
+      constructor(x, y, angle = 0) {
+        this.x = x;
+        this.y = y;
+        this.angle = angle;
+        this.alpha = 0.95;
+        this.scale = 0.72;
+      }
+      update() {
+        this.alpha -= 0.012; // ~4 saniye boyunca yerde kalsın
+        this.scale += 0.003;
+      }
+      draw(targetCtx) {
+        if (this.alpha <= 0) return;
+        targetCtx.save();
+        targetCtx.globalAlpha = Math.max(0, this.alpha);
+        targetCtx.translate(this.x, this.y);
+        targetCtx.rotate(this.angle);
+        targetCtx.scale(this.scale, this.scale);
 
-    function animate() {
-      requestAnimationFrame(animate);
-      const delta = clock.getDelta();
-      const time = clock.getElapsedTime();
+        targetCtx.fillStyle = "#ffffff";
+        targetCtx.shadowBlur = 14;
+        targetCtx.shadowColor = "#ffffff";
 
-      // Kamera Dönüş Takibi
-      const targetCamYaw = gyroYaw + dragYaw;
-      const targetCamPitch = gyroPitch + dragPitch;
-      camYaw += (targetCamYaw - camYaw) * 0.1;
-      camPitch += (targetCamPitch - camPitch) * 0.1;
-      camera.rotation.set(camPitch, camYaw, 0, 'YXZ');
+        // Ana pati yastığı
+        targetCtx.beginPath();
+        targetCtx.ellipse(0, 0, 8, 6, 0, 0, Math.PI * 2);
+        targetCtx.fill();
 
-      // Hayaletler
-      if (patronusState === 'ACTIVE' || patronusState === 'CONVERGE') {
+        // 4 adet sevimli parmak izi
+        const toes = [
+          { x: -7, y: -7, r: 2.5 },
+          { x: -2.5, y: -9.5, r: 2.8 },
+          { x: 2.5, y: -9.5, r: 2.8 },
+          { x: 7, y: -7, r: 2.5 }
+        ];
+        toes.forEach(t => {
+          targetCtx.beginPath();
+          targetCtx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
+          targetCtx.fill();
+        });
+        targetCtx.restore();
+      }
+    }
+
+    // --- GERÇEK 3D BRITISH SHORTHAIR PATRONUS (LORD BOBAN / OZZY) ---
+    const lightTrails = [];
+    let activeCat = null;
+    const catBadge = document.getElementById("catBadge");
+    const catTimer = document.getElementById("catTimer");
+
+    class BritishShorthairPatronus {
+      constructor() {
+        this.duration = 10000; // 10 saniye kutsal koruma
+        this.startTime = Date.now();
+        this.isAlive = true;
+        this.walkCycle = 0;
+        this.blinkTimer = 0;
+        this.isBlinking = false;
+        this.time = 0;
+
+        // Ekranın Her Yerinde Özgürce Gezinme (Full-Screen Autonomous Roaming)
+        this.x = width * 0.5;
+        this.y = height * 0.52;
+        this.speed = 2.4;
+        this.facing = 1;       // 1: sağa bakar, -1: sola bakar (Asla 0 olmaz, incelip ezilmez!)
+        this.tilt = 0;         // Dönüşlerde hafif aerodinamik yatış
+        this.stepCounter = 0;
+        this.pickNewDestination();
+
+        // 4,400+ Ultra Yoğun Anatomik Işık Parçacığı (Videodaki Ozzy / Lord Boban)
+        this.particles = this.generatePatronusParticles();
+
+        catBadge.style.display = "flex";
+        ghostCountText.innerHTML = "🛡️ SANCTUARY: Lord Boban Protected You!";
+        ghostCountText.style.color = "#ffd166";
+
+        // Salondaki tüm aktif hayaletleri anında yok et
         ghosts.forEach(g => {
-          g.alpha = Math.max(0, g.alpha - 0.08);
-          g.mesh.material.opacity = g.alpha;
+          g.isDying = true;
+          g.alpha = 0;
+        });
+
+        // Çağrılma anında ilahi gümüş-mavi yıldız parçacığı patlaması
+        for (let i = 0; i < 40; i++) {
+          particles.push(new Particle(this.x, this.y, "#ffffff", true));
+        }
+      }
+
+      // Ekranın herhangi bir yerine yeni hedef belirle (Sadece ortada değil, tüm ekranda!)
+      pickNewDestination() {
+        const minX = 90;
+        const maxX = Math.max(minX + 80, width - 90);
+        const minY = 130;
+        const maxY = Math.max(minY + 80, height - 170);
+
+        let attempts = 0;
+        let nx, ny, d;
+        do {
+          nx = minX + Math.random() * (maxX - minX);
+          ny = minY + Math.random() * (maxY - minY);
+          d = Math.hypot(nx - this.x, ny - this.y);
+          attempts++;
+        } while (d < Math.min(width * 0.35, 240) && attempts < 15);
+
+        this.targetX = nx;
+        this.targetY = ny;
+      }
+
+      update() {
+        const elapsed = Date.now() - this.startTime;
+        const remaining = Math.max(0, (this.duration - elapsed) / 1000);
+        catTimer.textContent = remaining.toFixed(1);
+
+        if (remaining <= 0) {
+          this.isAlive = false;
+          catBadge.style.display = "none";
+          ghostCountText.textContent = "Active Specters: 3";
+          ghostCountText.style.color = "#ff758f";
+
+          // Kaybolurken parıldayan altın yıldız patlaması
+          for (let i = 0; i < 45; i++) {
+            particles.push(new Particle(this.x, this.y, "#ffd166", true));
+          }
+          return;
+        }
+
+        this.time += 0.055;
+        this.stepCounter++;
+
+        // Hedefe doğru akıcı yürüyüş
+        const dx = this.targetX - this.x;
+        const dy = this.targetY - this.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < 26) {
+          this.pickNewDestination();
+        } else {
+          this.x += (dx / dist) * this.speed;
+          this.y += (dy / dist) * this.speed;
+          this.walkCycle += 0.07;
+        }
+
+        // Yön Tayini: Asla yatayda ezilip sıfır genişliğe düşmez!
+        if (dx > 8) {
+          this.facing = 1;
+        } else if (dx < -8) {
+          this.facing = -1;
+        }
+        // Hafif gövde salınımı / yatışı
+        this.tilt = (dx / (dist || 1)) * 0.08;
+
+        // Gerçekçi Göz Kırpma
+        this.blinkTimer++;
+        if (this.blinkTimer > 130 && Math.random() < 0.06) {
+          this.isBlinking = true;
+          if (this.blinkTimer > 142) {
+            this.isBlinking = false;
+            this.blinkTimer = 0;
+          }
+        }
+
+        // Kedi yürüdükçe arkasında parlayan ayak izleri bırakır
+        if (this.stepCounter % 16 === 0) {
+          const footOffset = (this.stepCounter % 32 === 0) ? -18 : 18;
+          const footX = this.x + (footOffset * this.facing);
+          const footY = this.y + 32;
+          lightTrails.push(new LightFootprint(footX, footY, (dx >= 0 ? 0.2 : -0.2)));
+          for (let p = 0; p < 2; p++) {
+            particles.push(new Particle(footX, footY, "#ffffff"));
+          }
+        }
+
+        // Yürürken havaya dökülen yıldız tozu izi
+        if (Math.random() < 0.35) {
+          particles.push(new Particle(
+            this.x + (Math.random() - 0.5) * 60,
+            this.y + (Math.random() - 0.5) * 45,
+            Math.random() > 0.3 ? "#ffffff" : "#cccccc"
+          ));
+        }
+      }
+
+      // 8,800+ ULTRA YOĞUN YAPISAL PARÇACIK MODELİ (Kuyruk Yoğunluğu Tüm Bedene Uygulandı)
+      generatePatronusParticles() {
+        const pts = [];
+
+        // 1. TÜM GÖVDE: Konsantrik Eliptik Dilimler ve Yüzey/Hacim Örgüsü (~3,200 parçacık)
+        // Kuyruktaki yapısal ızgara yoğunluğunun aynısı gövdeye uygulandı!
+        for (let s = -30; s <= 32; s += 1.8) {
+          const yNorm = (s - 6) / 33;
+          if (Math.abs(yNorm) >= 1) continue;
+          const xRadius = 52 * Math.sqrt(1 - yNorm * yNorm);
+          const yVal = s;
+          const numPoints = Math.max(14, Math.floor(xRadius * 1.6));
+
+          for (let shell = 0.5; shell <= 1.0; shell += 0.25) {
+            for (let i = 0; i < numPoints; i++) {
+              const a = (i / numPoints) * Math.PI * 2;
+              const lx = Math.cos(a) * xRadius * shell;
+              const ly = yVal + Math.sin(a) * 4 * (1 - shell);
+
+              let col = "#606060"; // Boban Full Grey
+              if (shell >= 0.98) col = "#e0e0e0"; // Gümüş-beyaz dış aura
+              else if (ly < -8) col = "#909090"; // Sırt açık gri ışığı
+              else if (ly > 22) col = "#383838"; // Göbek altı antrasit gölgesi
+              else if (lx > 15) col = "#b0b0b0"; // Göğüs açık gri
+
+              pts.push({ type: "body", lx, ly, size: 1.4, color: col, phase: Math.random() * 10 });
+            }
+          }
+        }
+
+        // 2. YUVARLAK KAFA: Konsantrik Küresel Katmanlar (~1,800 parçacık)
+        const headCenterX = 34, headCenterY = -18, headR = 28;
+        for (let r = 8; r <= headR; r += 3.5) {
+          const isOuter = r >= headR - 1.2;
+          const num = Math.floor(r * 4.0);
+          for (let i = 0; i < num; i++) {
+            const a = (i / num) * Math.PI * 2;
+            const lx = headCenterX + Math.cos(a) * r;
+            const ly = headCenterY + Math.sin(a) * r;
+
+            let col = "#686868"; // Tam gri kafa
+            if (isOuter) col = "#e8e8e8"; // Dış gümüş hat
+            else if (ly < -30) col = "#9e9e9e"; // Alın açık gri
+            else if (ly > -5) col = "#424242"; // Çene altı koyu gri
+
+            pts.push({ type: "head", lx, ly, size: 1.4, color: col, phase: Math.random() * 10 });
+          }
+        }
+
+        // 3. POFUDUK YANAKLAR: Yoğun Küresel Yanak Örgüsü (~800 parçacık)
+        const cheeks = [{ cx: 48, cy: -10, rMax: 15 }, { cx: 22, cy: -10, rMax: 14 }];
+        cheeks.forEach(chk => {
+          for (let r = 3; r <= chk.rMax; r += 2.5) {
+            const num = Math.floor(r * 4.4);
+            for (let i = 0; i < num; i++) {
+              const a = (i / num) * Math.PI * 2;
+              pts.push({
+                type: "cheek",
+                lx: chk.cx + Math.cos(a) * r,
+                ly: chk.cy + Math.sin(a) * r,
+                size: 1.5,
+                color: r > chk.rMax - 2 ? "#dcdcdc" : "#888888",
+                phase: Math.random() * 10
+              });
+            }
+          }
+        });
+
+        // 4. KULAKLAR: Yapısal Üçgen Örgü (~360 parçacık)
+        for (let row = 0; row < 14; row++) {
+          const t = row / 14;
+          const w = (1 - t) * 14;
+          for (let col = -w / 2; col <= w / 2; col += 2.2) {
+            pts.push({ type: "ear", lx: 18 + col, ly: -34 - t * 20, size: 1.4, color: t < 0.7 ? "#9a8f92" : "#404040", phase: Math.random() * 10 });
+            pts.push({ type: "ear", lx: 44 + col, ly: -34 - t * 20, size: 1.4, color: t < 0.7 ? "#9a8f92" : "#404040", phase: Math.random() * 10 });
+          }
+        }
+
+        // 5. SEVİMLİ PEMBE BURUN & BIYIKLAR (~160 parçacık)
+        for (let row = 0; row < 8; row++) {
+          const t = row / 8;
+          const w = (1 - t) * 6;
+          for (let c = -w / 2; c <= w / 2; c += 1.8) {
+            pts.push({ type: "nose", lx: 43 + c, ly: -13 + t * 4, size: 1.5, color: "#786870", phase: Math.random() * 10 });
+          }
+        }
+        const whiskerOffsets = [
+          { startX: 49, startY: -11, endX: 78, endY: -16 },
+          { startX: 49, startY: -9, endX: 80, endY: -8 },
+          { startX: 49, startY: -7, endX: 76, endY: 1 },
+          { startX: 23, startY: -11, endX: -6, endY: -16 },
+          { startX: 23, startY: -9, endX: -8, endY: -8 },
+          { startX: 23, startY: -7, endX: -4, endY: 1 }
+        ];
+        whiskerOffsets.forEach(w => {
+          for (let s = 0; s < 14; s++) {
+            const f = s / 13;
+            pts.push({ type: "whisker", lx: w.startX + (w.endX - w.startX) * f, ly: w.startY + (w.endY - w.startY) * f, size: 1.3, color: "#ffffff", phase: Math.random() * 10 });
+          }
+        });
+
+        // 6. KEHRİBAR / ALTIN GÖZLER (~160 parçacık)
+        const eyeCenters = [{ x: 27, y: -21 }, { x: 45, y: -21 }];
+        eyeCenters.forEach(ec => {
+          for (let r = 2; r <= 6.8; r += 2.0) {
+            const num = Math.floor(r * 5.0);
+            for (let i = 0; i < num; i++) {
+              const a = (i / num) * Math.PI * 2;
+              pts.push({ type: "eye", lx: ec.x + Math.cos(a) * r, ly: ec.y + Math.sin(a) * r, size: 1.8, color: r < 4.0 ? "#ffd166" : "#ffb703", phase: 0 });
+            }
+          }
+          for (let i = -4; i <= 4; i++) {
+            pts.push({ type: "pupil", lx: ec.x, ly: ec.y + i * 1.4, size: 1.8, color: "#050505", phase: 0 });
+          }
+          pts.push({ type: "glint", lx: ec.x - 2, ly: ec.y - 2, size: 2.2, color: "#ffffff", phase: 0 });
+        });
+
+        // 7. DÖRT BACAK VE PATİLER: Silindirik Bacak Boruları (~1,400 parçacık)
+        const legs = [
+          { id: "bl", hipX: -26, hipY: 18, isBack: true, phaseOffset: 0 },
+          { id: "br", hipX: 20, hipY: 18, isBack: true, phaseOffset: Math.PI },
+          { id: "fl", hipX: -16, hipY: 22, isBack: false, phaseOffset: Math.PI },
+          { id: "fr", hipX: 32, hipY: 22, isBack: false, phaseOffset: 0 }
+        ];
+        legs.forEach(leg => {
+          for (let slice = 0; slice < 20; slice++) {
+            const seg = slice / 20;
+            const legR = 6.2 * (1 - seg * 0.18); // Bileğe doğru hafif incelir
+            for (let p = 0; p < 14; p++) {
+              const a = (p / 14) * Math.PI * 2;
+              pts.push({
+                type: "leg",
+                legId: leg.id,
+                hipX: leg.hipX,
+                hipY: leg.hipY,
+                seg,
+                colOffset: Math.cos(a) * legR,
+                len: 26,
+                phaseOffset: leg.phaseOffset,
+                size: 1.4,
+                color: leg.isBack ? "#484848" : "#666666",
+                phase: Math.random() * 10
+              });
+            }
+          }
+          // Yuvarlak Pofuduk Patiler
+          for (let p = 0; p < 36; p++) {
+            const a = (p / 36) * Math.PI * 2;
+            pts.push({
+              type: "paw",
+              legId: leg.id,
+              hipX: leg.hipX,
+              hipY: leg.hipY,
+              phaseOffset: leg.phaseOffset,
+              pawOffsetX: Math.cos(a) * 6.5,
+              pawOffsetY: Math.sin(a) * 4.2,
+              size: 1.8,
+              color: "#e0e0e0",
+              phase: Math.random() * 10
+            });
+          }
+        });
+
+        // 8. KUYRUK: TABANDAN UCA DOĞRU ZARİFÇE İNCELEN SİLİNDİR (Soba Borusu Değil! - 650 parçacık)
+        const tailLength = 54;
+        const rBase = 11.2; // Kalçada kalın, etli taban
+        const rTip = 6.2;   // Uçta doğal incelen zarif kürk
+        const numTailSlices = 38;
+        const radialTailPts = 16;
+
+        for (let s = 0; s < numTailSlices; s++) {
+          const t = s / numTailSlices;
+          const dist = t * tailLength;
+          const curR = rBase * (1.0 - t * 0.45); // Uca doğru %45 incelir!
+
+          for (let r = 0; r < radialTailPts; r++) {
+            const angle = (r / radialTailPts) * Math.PI * 2;
+            const normOffset = Math.cos(angle);
+            let col = "#585858"; // Tam gri kuyruk
+            if (normOffset < -0.6) col = "#909090"; // Üst açık gri ışık
+            else if (normOffset > 0.6) col = "#383838"; // Alt koyu gölge
+            else if (Math.abs(normOffset) > 0.85) col = "#e0e0e0"; // Gümüş rim ışığı
+
+            pts.push({
+              type: "tail_cyl",
+              dist,
+              rOffset: normOffset * curR,
+              size: 1.5,
+              color: col,
+              phase: Math.random() * 10
+            });
+          }
+        }
+
+        // İncelen Silindirin Yuvarlak Kubbe Ucu (70 parçacık)
+        for (let i = 0; i < 70; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const r = Math.sqrt(Math.random()) * rTip;
+          const capDist = tailLength + Math.sqrt(Math.max(0, rTip * rTip - r * r)) * 0.7;
+          pts.push({
+            type: "tail_cyl",
+            dist: capDist,
+            rOffset: Math.sin(a) * r,
+            size: 1.5,
+            color: "#707070",
+            phase: Math.random() * 10
+          });
+        }
+
+        // 9. KUTSAL LORD BOBAN ALTIN HALESİ (~160 parçacık)
+        for (let i = 0; i < 90; i++) {
+          const a = (i / 90) * Math.PI * 2;
+          pts.push({ type: "halo", angle: a, rX: 26, rY: 8, size: 2.0, color: "#ffd166", phase: Math.random() * 10 });
+        }
+        for (let i = 0; i < 70; i++) {
+          const a = (i / 70) * Math.PI * 2;
+          pts.push({ type: "halo_inner", angle: a, rX: 21, rY: 6, size: 1.6, color: "#ffb703", phase: Math.random() * 10 });
+        }
+
+        return pts;
+      }
+
+      draw(targetCtx) {
+        if (!this.isAlive) return;
+
+        const bob = Math.sin(this.walkCycle * 4) * 6;
+        const catX = this.x;
+        const catY = this.y + bob;
+        const scale = 1.35; // Dengeli, odaya tam oturan sevimli boyut
+
+        targetCtx.save();
+        targetCtx.translate(catX, catY);
+        targetCtx.rotate(this.tilt);
+        targetCtx.scale(this.facing * scale, scale);
+
+        // 1. Odayı Aydınlatan Gümüşi Beyaz Işık Halesi (Sıfır Mavi/Camgöbeği!)
+        const auraGrad = targetCtx.createRadialGradient(0, 0, 10, 0, 0, 110);
+        auraGrad.addColorStop(0, "rgba(255, 255, 255, 0.40)");
+        auraGrad.addColorStop(0.35, "rgba(230, 230, 230, 0.20)");
+        auraGrad.addColorStop(0.7, "rgba(190, 190, 190, 0.06)");
+        auraGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+        targetCtx.fillStyle = auraGrad;
+        targetCtx.beginPath();
+        targetCtx.arc(0, 0, 110, 0, Math.PI * 2);
+        targetCtx.fill();
+
+        // 2. KEDİNİN İÇİNİ DOLU GÖSTEREN ZEMİN SİLÜETİ (Hacimli kürk tabanı)
+        targetCtx.save();
+        targetCtx.fillStyle = "rgba(95, 95, 95, 0.82)"; // Full Grey Kürk Tabanı
+        targetCtx.shadowBlur = 12;
+        targetCtx.shadowColor = "#ffffff";
+
+        // Gövde tabanı
+        targetCtx.beginPath();
+        targetCtx.ellipse(0, 7, 52, 34, 0, 0, Math.PI * 2);
+        targetCtx.fill();
+
+        // Kafa tabanı
+        targetCtx.beginPath();
+        targetCtx.arc(34, -18, 28, 0, Math.PI * 2);
+        targetCtx.fill();
+
+        // Tombul yanaklar
+        targetCtx.beginPath();
+        targetCtx.arc(48, -10, 15, 0, Math.PI * 2);
+        targetCtx.arc(22, -10, 14, 0, Math.PI * 2);
+        targetCtx.fill();
+
+        // Kulak tabanları
+        targetCtx.beginPath();
+        targetCtx.moveTo(11, -26); targetCtx.lineTo(18, -54); targetCtx.lineTo(25, -26); targetCtx.closePath(); targetCtx.fill();
+        targetCtx.beginPath();
+        targetCtx.moveTo(37, -26); targetCtx.lineTo(44, -54); targetCtx.lineTo(51, -26); targetCtx.closePath(); targetCtx.fill();
+
+        // DOĞAL İNCELEN SİLİNDİRİK KUYRUK TABANI (Soba Borusu Değil, Tabanda 11px -> Uçta 6.2px Zarif İncelme!)
+        const tailBaseX = -45, tailBaseY = 6;
+        const tailSway = Math.sin(this.walkCycle * 2.2) * 0.14;
+        const tipTheta = (Math.PI * 0.86) + tailSway - 0.38;
+        const tipX = tailBaseX + Math.cos(tipTheta) * 54;
+        const tipY = tailBaseY - Math.sin(tipTheta) * 54;
+
+        const baseNormAngle = (Math.PI * 0.86) + tailSway + Math.PI / 2;
+        const tipNormAngle = tipTheta + Math.PI / 2;
+        const nbX = Math.cos(baseNormAngle) * 11.2;
+        const nbY = -Math.sin(baseNormAngle) * 11.2;
+        const ntX = Math.cos(tipNormAngle) * 6.2;
+        const ntY = -Math.sin(tipNormAngle) * 6.2;
+
+        targetCtx.beginPath();
+        targetCtx.moveTo(tailBaseX + nbX, tailBaseY + nbY);
+        targetCtx.quadraticCurveTo(tailBaseX - 28 + nbX * 0.7, tailBaseY - 8 + tailSway * 18, tipX + ntX, tipY + ntY);
+        targetCtx.arc(tipX, tipY, 6.2, -tipNormAngle, -tipNormAngle + Math.PI);
+        targetCtx.quadraticCurveTo(tailBaseX - 28 - nbX * 0.7, tailBaseY - 8 + tailSway * 18, tailBaseX - nbX, tailBaseY - nbY);
+        targetCtx.closePath();
+        targetCtx.fill();
+        targetCtx.restore();
+
+        // 3. 8,800+ ULTRA YOĞUN IŞIK PARÇACIĞINI HESAPLA VE ÇİZ
+        const haloOrbit = this.time * 1.8;
+
+        for (let i = 0; i < this.particles.length; i++) {
+          const p = this.particles[i];
+          let lx = 0, ly = 0;
+
+          // Mikro titreşim (0.8px)
+          const jitterX = Math.sin(this.time * 6 + p.phase) * 0.8;
+          const jitterY = Math.cos(this.time * 5 + p.phase) * 0.8;
+
+          if (p.type === "body" || p.type === "head" || p.type === "cheek" || p.type === "ear" || p.type === "nose" || p.type === "whisker") {
+            lx = p.lx + jitterX;
+            ly = p.ly + jitterY;
+          } else if (p.type === "eye" || p.type === "pupil" || p.type === "glint") {
+            if (this.isBlinking) continue;
+            lx = p.lx + jitterX * 0.2;
+            ly = p.ly + jitterY * 0.2;
+          } else if (p.type === "leg") {
+            const swing = Math.sin(this.walkCycle * 4 + p.phaseOffset) * 0.4;
+            const currentLen = p.seg * p.len;
+            lx = p.hipX + p.colOffset + Math.sin(swing) * currentLen + jitterX * 0.3;
+            ly = p.hipY + Math.cos(swing) * currentLen + jitterY * 0.3;
+          } else if (p.type === "paw") {
+            const swing = Math.sin(this.walkCycle * 4 + p.phaseOffset) * 0.4;
+            lx = p.hipX + p.pawOffsetX + Math.sin(swing) * 27 + jitterX * 0.3;
+            ly = p.hipY + p.pawOffsetY + Math.cos(swing) * 27 + jitterY * 0.3;
+          } else if (p.type === "tail_cyl") {
+            const t = p.dist / 54;
+            const theta = (Math.PI * 0.86) + tailSway - t * 0.38;
+            const cx = tailBaseX + Math.cos(theta) * p.dist;
+            const cy = tailBaseY - Math.sin(theta) * p.dist;
+            lx = cx - Math.sin(theta) * p.rOffset + jitterX * 0.4;
+            ly = cy - Math.cos(theta) * p.rOffset + jitterY * 0.4;
+          } else if (p.type === "halo" || p.type === "halo_inner") {
+            const a = p.angle + haloOrbit;
+            lx = 34 + Math.cos(a) * p.rX + jitterX * 0.2;
+            ly = -62 + Math.sin(a) * p.rY + jitterY * 0.2;
+          }
+
+          targetCtx.fillStyle = p.color;
+          targetCtx.beginPath();
+          targetCtx.arc(lx, ly, p.size, 0, Math.PI * 2);
+          targetCtx.fill();
+        }
+
+        // 4. Kutsal Lord Boban Altın Başlığı 👑
+        targetCtx.shadowBlur = 12;
+        targetCtx.shadowColor = "#ffd166";
+        targetCtx.fillStyle = "#ffd166";
+        targetCtx.font = "bold 12px 'Outfit', sans-serif";
+        targetCtx.textAlign = "center";
+        targetCtx.fillText("👑 LORD BOBAN", 34, -76);
+
+        targetCtx.restore();
+      }
+    }
+
+    // --- BÜYÜ YAPMA (Ekrana Dokununca Ateşle) ---
+    function castSpell(targetX, targetY) {
+      initAudio();
+      const spell = SPELLS[selectedSpell];
+
+      // Ekran Flaşı
+      flashOverlay.style.background = spell.flash;
+      flashOverlay.style.opacity = "1";
+      setTimeout(() => { flashOverlay.style.opacity = "0"; }, 100);
+
+      playSpellSound(selectedSpell);
+      if (navigator.vibrate) navigator.vibrate(35);
+
+      spellBeams.push(new SpellBeam(targetX, targetY, selectedSpell));
+
+      // EXPECTO PATRONUM atılırsa: Kedi Patronus u (Ozzy / Boban) çağır!
+      if (selectedSpell === "patronum") {
+        activeCat = new BritishShorthairPatronus();
+      }
+    }
+
+    // Ekranın ortasına veya dokunulan noktaya büyü at
+    canvas.addEventListener("click", (e) => {
+      castSpell(e.clientX, e.clientY);
+    });
+
+    // Nişangah Takibi (Bir hayalete kilitlendiğinde kırmızıya dönsün)
+    function checkCrosshairLock() {
+      if (activeCat && activeCat.isAlive) {
+        crosshair.classList.remove("locked");
+        return;
+      }
+
+      let isLocked = false;
+      ghosts.forEach(ghost => {
+        const pos = ghost.getScreenPosition();
+        if (!pos || ghost.isDying) return;
+        const dist = Math.hypot(width / 2 - pos.x, height / 2 - pos.y);
+        if (dist < 60 * pos.scale) isLocked = true;
+      });
+
+      if (isLocked) crosshair.classList.add("locked");
+      else crosshair.classList.remove("locked");
+    }
+
+    // --- ANA OYUN DÖNGÜSÜ (Game Loop) ---
+    function gameLoop() {
+      ctx.clearRect(0, 0, width, height);
+
+      // 1. Kedinin Bıraktığı Zemin Işık İzlerini Çiz ve Güncelle
+      for (let i = lightTrails.length - 1; i >= 0; i--) {
+        const trail = lightTrails[i];
+        trail.update();
+        trail.draw(ctx);
+        if (trail.alpha <= 0) lightTrails.splice(i, 1);
+      }
+
+      // 2. Gerçek 3D Ruh Kedisi (Lord Boban - British Shorthair Patronus)
+      if (activeCat) {
+        activeCat.update();
+        if (activeCat.isAlive) {
+          activeCat.draw(ctx);
+        } else {
+          activeCat = null;
+        }
+      }
+
+      // 3. Kutsal Koruma (Sanctuary): Kedi ekrandayken ASLA hayalet gelmez, var olanlar kaçar!
+      if (activeCat && activeCat.isAlive) {
+        ghosts.forEach(ghost => {
+          ghost.alpha = Math.max(0, ghost.alpha - 0.08);
+          if (ghost.alpha > 0) ghost.draw();
         });
       } else {
-        ghosts.forEach(g => g.update());
+        // Kedi yokken normal hayaletler oyunda aktif olur
+        ghosts.forEach(ghost => {
+          ghost.update();
+          ghost.draw();
+        });
       }
 
-      // --- EXPECTO PATRONUM STATE MACHINE ---
-      if (patronusState !== 'IDLE') {
-        const elapsed = Date.now() - patronusStartTime;
-
-        // AŞAMA 1: Girdap Halinde Havada Uçuşan Gümüş Kıvılcımlar (0.0s - 0.8s)
-        if (elapsed < 800) {
-          const t = elapsed / 800;
-          for (let i = 0; i < PARTICLE_COUNT; i++) {
-            const vp = swarmVortexPos[i];
-            vp.angle += vp.speed;
-            const curR = vp.r * (0.3 + 0.7 * t);
-            swarmPos[i * 3] = Math.cos(vp.angle) * curR;
-            swarmPos[i * 3 + 1] = -5 + vp.y * (1 - t * 0.3) + Math.sin(time * 2.5 + i) * 2;
-            swarmPos[i * 3 + 2] = Math.sin(vp.angle) * curR;
-          }
-          swarmGeo.attributes.position.needsUpdate = true;
-          document.getElementById("statusText").innerHTML = "⚡ <strong>ASADAN PARÇACIKLAR FIRLADI!</strong>";
-        }
-        // AŞAMA 2: Parçacıkların Manyetik Olarak Kediye Birleşmesi (0.8s - 2.2s)
-        else if (elapsed < 2200) {
-          patronusState = 'CONVERGE';
-          const progress = Math.min(1.0, (elapsed - 800) / 1400);
-          const ease = progress < 0.5 
-            ? 4 * progress * progress * progress 
-            : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-
-          const numTargets = catTargetVertices.length;
-          for (let i = 0; i < PARTICLE_COUNT; i++) {
-            const vp = swarmVortexPos[i];
-            vp.angle += vp.speed * (1 - ease * 0.7);
-
-            const vortexX = Math.cos(vp.angle) * vp.r * (1 - ease * 0.8);
-            const vortexY = -5 + vp.y * (1 - ease * 0.7);
-            const vortexZ = Math.sin(vp.angle) * vp.r * (1 - ease * 0.8);
-
-            if (numTargets > 0) {
-              const target = catTargetVertices[i % numTargets];
-              const tx = target.x + catPos.x;
-              const ty = target.y + catPos.y;
-              const tz = target.z + catPos.z;
-
-              swarmPos[i * 3] = vortexX * (1 - ease) + tx * ease;
-              swarmPos[i * 3 + 1] = vortexY * (1 - ease) + ty * ease;
-              swarmPos[i * 3 + 2] = vortexZ * (1 - ease) + tz * ease;
-            }
-          }
-          swarmGeo.attributes.position.needsUpdate = true;
-          document.getElementById("statusText").innerHTML = `🧲 <strong>MIKNATIS ETKİSİ:</strong> Parçacıklar Lord Boban'ı Oluşturuyor (%${Math.round(progress * 100)})`;
-        }
-        // AŞAMA 3: Canlanma & 3D Yürüyüş (2.2s+)
-        else {
-          if (patronusState !== 'ACTIVE') {
-            patronusState = 'ACTIVE';
-            const flash = document.getElementById("flashOverlay");
-            flash.style.background = "rgba(255, 255, 255, 0.4)";
-            flash.style.opacity = "1";
-            setTimeout(() => { flash.style.opacity = "0"; }, 120);
-
-            if (catScene) catScene.visible = true;
-            groundGroup.visible = true;
-            surfaceSystem.visible = true;
-            swarmPoints.visible = false;
-
-            pickNewCatDestination();
-            document.getElementById("statusText").innerHTML = "🛡️ <strong>SANCTUARY:</strong> Lord Boban Yanında!";
-            document.getElementById("statusText").style.color = "#ffd166";
-          }
-
-          const activeElapsed = elapsed - 2200;
-          const remaining = Math.max(0, (DURATION_ACTIVE - activeElapsed) / 1000);
-          document.getElementById("catTimer").textContent = remaining.toFixed(1) + "s";
-
-          if (remaining <= 0) {
-            patronusState = 'IDLE';
-            if (catScene) catScene.visible = false;
-            groundGroup.visible = false;
-            surfaceSystem.visible = false;
-            document.getElementById("catBadge").style.display = "none";
-            document.getElementById("statusText").innerHTML = "⚡ Ekrana dokunarak Patronus'u yeniden çağır!";
-            document.getElementById("statusText").style.color = "#cbd5e1";
-          } else {
-            // 3D ODA İÇİNDE YÜRÜYÜŞ
-            const dx = catTargetPos.x - catPos.x;
-            const dz = catTargetPos.z - catPos.z;
-            const dist = Math.hypot(dx, dz);
-
-            if (dist < 3) {
-              pickNewCatDestination();
-            } else {
-              catPos.x += (dx / dist) * catSpeed;
-              catPos.z += (dz / dist) * catSpeed;
-
-              const targetAngle = Math.atan2(dx, dz);
-              let diff = targetAngle - catRotY;
-              while (diff < -Math.PI) diff += Math.PI * 2;
-              while (diff > Math.PI) diff -= Math.PI * 2;
-              catRotY += diff * 0.08;
-            }
-
-            if (catScene) {
-              catScene.position.set(catPos.x, catPos.y, catPos.z);
-              catScene.rotation.y = catRotY;
-              updateCatProceduralAnimation(time);
-            }
-
-            groundGroup.position.set(catPos.x, -16.0, catPos.z);
-
-            // KEDİNİN TAM GÖVDESİNDEN ÇIKAN VE YAVAŞÇA SÜZÜLEN PARÇACIKLAR
-            for (let i = 0; i < SURFACE_PARTICLE_COUNT; i++) {
-              const p = surfaceParticleList[i];
-              if (!p.active || p.age >= p.life) {
-                // Kademeli olarak her karede gövdeden yeni parçacık doğur
-                if (Math.random() < 0.12) {
-                  spawnSurfaceParticle(i);
-                }
-              }
-
-              if (p.active) {
-                p.age += 0.016;
-                const progress = p.age / p.life;
-                if (progress >= 1.0) {
-                  p.active = false;
-                  surfacePositions[i * 3 + 1] = -9999;
-                } else {
-                  // Yavaşça yukarı ve yana süzülme (curl turbulence)
-                  p.x += p.vx + Math.sin(time * 1.8 + p.phase) * 0.015;
-                  p.y += p.vy;
-                  p.z += p.vz + Math.cos(time * 1.8 + p.phase) * 0.015;
-
-                  surfacePositions[i * 3] = p.x;
-                  surfacePositions[i * 3 + 1] = p.y;
-                  surfacePositions[i * 3 + 2] = p.z;
-
-                  // Yumuşak kadife parlaklık (gövdeden doğarken parlar, yükseldikçe usulca erir)
-                  const alpha = Math.sin(progress * Math.PI) * 0.9;
-                  surfaceColors[i * 3] = alpha * 0.95;
-                  surfaceColors[i * 3 + 1] = alpha * 0.98;
-                  surfaceColors[i * 3 + 2] = alpha * 1.0;
-                }
-              }
-            }
-            surfaceGeo.attributes.position.needsUpdate = true;
-            surfaceGeo.attributes.color.needsUpdate = true;
-          }
-        }
+      // Büyü Işınlarını Çiz
+      for (let i = spellBeams.length - 1; i >= 0; i--) {
+        const beam = spellBeams[i];
+        beam.update();
+        beam.draw();
+        if (beam.isDone) spellBeams.splice(i, 1);
       }
 
-      renderer.render(scene, camera);
+      // Parçacıkları Çiz
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.update();
+        p.draw();
+        if (p.alpha <= 0) particles.splice(i, 1);
+      }
+
+      checkCrosshairLock();
+      requestAnimationFrame(gameLoop);
     }
 
-    // --- ETKİLEŞİM & BAŞLATMA ---
-    window.addEventListener("click", (e) => {
-      if (document.getElementById("startModal").style.display !== "none") return;
-      if (e.target && e.target.closest && e.target.closest("#wandBtn")) return;
-      castExpectoPatronum();
-    });
-
-    document.getElementById("wandBtn").addEventListener("click", (e) => {
-      e.stopPropagation();
-      castExpectoPatronum();
-    });
-
+    // Başlat Butonuna Basınca
     document.getElementById("startBtn").addEventListener("click", () => {
       initAudio();
       startCamera();
       document.getElementById("startModal").style.display = "none";
-      castExpectoPatronum();
-      animate();
+      gameLoop();
     });
   </script>
 </body>

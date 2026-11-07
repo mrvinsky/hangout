@@ -26,13 +26,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
-      # game.html kedi modelini ../public/models/cat altından yüklüyor; sitede kökte cat/ olarak sun
+      # game-glb.html kedi modelini ../public/models/cat altından yüklüyor; sitede kökte cat/ olarak sun
       - name: Build site
         run: |
           mkdir -p _site/cat
           cp -r legacy/. _site/
           cp -r public/models/cat/. _site/cat/
-          sed -i 's#\.\./public/models/cat/#cat/#' _site/game.html
+          sed -i 's#\.\./public/models/cat/#cat/#' _site/game-glb.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
