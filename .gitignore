@@ -1,0 +1,10 @@
+node_modules/
+.expo/
+dist/
+.DS_Store
+scratch/
+.venv/
+*.pyc
+__pycache__/
+.env
+.env.local
