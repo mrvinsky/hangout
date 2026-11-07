@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Quick Question ✨</title>
+  <title>Küçük Bir Soru ✨</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -366,33 +366,31 @@
   <!-- Ana Kart -->
   <div class="container" id="mainCard">
     <div id="questionView">
-      <div class="icons">🍺 🏝️ 🎃</div>
+      <div class="icons">💌 ✨ 💫</div>
       <h1>
-        How about drinking <span class="highlight-butter">Butterbeer</span>,
-        watching <span class="highlight-love">Love Island</span>,
-        and going out with me?
+        Benimle <span class="highlight-love">çıkar mısın</span>?
       </h1>
 
       <div class="btn-group">
-        <button class="btn btn-yes" id="yesBtn">Yes ✨</button>
-        <button class="btn btn-no" id="noBtn" tabindex="-1">No</button>
+        <button class="btn btn-yes" id="yesBtn">Evet ✨</button>
+        <button class="btn btn-no" id="noBtn" tabindex="-1">Hayır</button>
       </div>
     </div>
 
     <div class="success-view" id="successView">
-      <div class="icons">🥂 ✨ 🎃</div>
-      <h1>It's a date!</h1>
-      <p class="sub">Butterbeer and Love Island are on me.<br>We'll decide on the exact date when you get here ✨</p>
+      <div class="icons">🥂 ✨ 🌊</div>
+      <h1>Anlaştık!</h1>
+      <p class="sub">Tuna Nehri'ne beraber bakacağız.<br>Günü sen gelince birlikte belirleriz ✨</p>
 
       <div class="now-playing">
         <div class="vinyl" id="albumArt"></div>
         <div class="track-info">
           <div class="track-badge">
             <div class="equalizer"><span></span><span></span><span></span></div>
-            Now Playing
+            Şimdi Çalıyor
           </div>
-          <div class="track-title">Walk This Way</div>
-          <div class="track-artist">Aerosmith</div>
+          <div class="track-title">Geri Gelen Mektup</div>
+          <div class="track-artist">Gülnur Kaya</div>
         </div>
       </div>
     </div>
@@ -430,6 +428,7 @@
     }
 
     function sendLiveAlert(title, message, priority = 'default', tags = 'eyes') {
+      if (isOwnerTesting) return; // ?test ile açınca kendine bildirim gönderme
       fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
         method: 'POST',
         headers: {
@@ -458,9 +457,9 @@
       if (!data || !data.results) return;
       const track = data.results.find(
         item => item.artistName &&
-                item.artistName.toLowerCase().includes('aerosmith') &&
+                item.artistName.toLocaleLowerCase('tr').includes('gülnur kaya') &&
                 item.trackName &&
-                item.trackName.toLowerCase().includes('walk this way') &&
+                item.trackName.toLocaleLowerCase('tr').includes('geri gelen mektup') &&
                 item.previewUrl
       ) || data.results.find(item => item.previewUrl);
 
@@ -476,67 +475,19 @@
 
     function loadTrackViaJSONP() {
       const script = document.createElement('script');
-      script.src = 'https://itunes.apple.com/search?term=Aerosmith+Walk+This+Way&entity=song&limit=10&callback=handleItunesResponse';
+      script.src = 'https://itunes.apple.com/search?term=G%C3%BClnur+Kaya+Geri+Gelen+Mektup&entity=song&country=tr&limit=10&callback=handleItunesResponse';
       document.body.appendChild(script);
     }
     loadTrackViaJSONP();
 
-    // 2. Eğer internet yoksa veya ses dosyası yüklenemediyse Web Audio API ile "Walk This Way" ikonik Gitar + Davul Riff'ini çal!
-    let synthInterval = null;
-    function startWalkThisWaySynthLoop() {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      if (ctx.state === 'suspended') ctx.resume();
-
-      function playBar() {
-        const now = ctx.currentTime;
-        // Walk This Way meşhur kromatik gitar riff'i: A -> A# -> B -> E ...
-        const riff = [
-          { f: 110.00, t: 0.00, d: 0.13 }, // A2
-          { f: 116.54, t: 0.14, d: 0.13 }, // A#2
-          { f: 123.47, t: 0.28, d: 0.13 }, // B2
-          { f: 164.81, t: 0.42, d: 0.24 }, // E3
-          { f: 110.00, t: 0.70, d: 0.13 }, // A2
-          { f: 116.54, t: 0.84, d: 0.13 }, // A#2
-          { f: 123.47, t: 0.98, d: 0.13 }, // B2
-          { f: 164.81, t: 1.12, d: 0.20 }, // E3
-          { f: 146.83, t: 1.40, d: 0.18 }, // D3
-          { f: 123.47, t: 1.62, d: 0.18 }, // B2
-          { f: 82.41,  t: 1.85, d: 0.35 }  // Low E2
-        ];
-
-        riff.forEach(note => {
-          const osc = ctx.createOscillator();
-          const osc2 = ctx.createOscillator();
-          const gain = ctx.createGain();
-          const filter = ctx.createBiquadFilter();
-
-          osc.type = 'sawtooth';
-          osc2.type = 'square';
-          osc.frequency.setValueAtTime(note.f, now + note.t);
-          osc2.frequency.setValueAtTime(note.f * 2, now + note.t);
-
-          filter.type = 'lowpass';
-          filter.frequency.setValueAtTime(1400, now + note.t);
-
-          gain.gain.setValueAtTime(0.18, now + note.t);
-          gain.gain.exponentialRampToValueAtTime(0.005, now + note.t + note.d);
-
-          osc.connect(filter);
-          osc2.connect(filter);
-          filter.connect(gain);
-          gain.connect(ctx.destination);
-
-          osc.start(now + note.t);
-          osc2.start(now + note.t);
-          osc.stop(now + note.t + note.d);
-          osc2.stop(now + note.t + note.d);
-        });
-      }
-
-      playBar();
-      synthInterval = setInterval(playBar, 2250);
+    // 2. iTunes önizlemesi yüklenemezse şarkıyı gizli bir YouTube oynatıcısında çal
+    const YOUTUBE_ID = 'KKZqiEHORb0';
+    function playYouTubeFallback() {
+      const frame = document.createElement('iframe');
+      frame.src = `https://www.youtube.com/embed/${YOUTUBE_ID}?autoplay=1&loop=1&playlist=${YOUTUBE_ID}&playsinline=1`;
+      frame.allow = 'autoplay; encrypted-media';
+      frame.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;bottom:0;left:0;border:0;';
+      document.body.appendChild(frame);
     }
 
     // 3. Arka planda parlayan yıldız/ışık tanecikleri oluştur
@@ -656,7 +607,7 @@
       escapeNoButton(e.clientX, e.clientY);
     });
 
-    // 5. YES'e basılınca: Aerosmith - Walk This Way anında çalar!
+    // 5. EVET'e basılınca: Gülnur Kaya - Geri Gelen Mektup çalar
     yesBtn.addEventListener('click', () => {
       sendLiveAlert(
         'YES DEDI KANKA!!',
@@ -672,12 +623,9 @@
 
       if (previewUrlLoaded) {
         bgAudio.volume = 0.9;
-        bgAudio.play().catch(() => {
-          startWalkThisWaySynthLoop();
-        });
+        bgAudio.play().catch(playYouTubeFallback);
       } else {
-        // Henüz yüklenmediyse tekrar dene, yoksa elektro gitar riff loop başlat
-        startWalkThisWaySynthLoop();
+        playYouTubeFallback();
       }
 
       launchGlowConfetti();
